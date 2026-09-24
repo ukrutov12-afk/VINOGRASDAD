@@ -96,4 +96,9 @@ public final class ModeRow extends Row {
         setting.set(Math.max(0, Math.min(n - 1, i)));
         return true;
     }
+
+    @Override
+    public String tip() {
+        return setting.description();
+    }
 }

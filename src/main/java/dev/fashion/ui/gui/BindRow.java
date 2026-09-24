@@ -99,4 +99,9 @@ public final class BindRow extends Row {
         }
         return false;
     }
+
+    @Override
+    public String tip() {
+        return "ЛКМ — назначить клавишу, ПКМ — сбросить";
+    }
 }

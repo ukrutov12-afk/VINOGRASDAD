@@ -84,4 +84,9 @@ public final class SliderRow extends Row {
     public void mouseUp(float mx, float my) {
         dragging = false;
     }
+
+    @Override
+    public String tip() {
+        return setting.description();
+    }
 }

@@ -76,6 +76,9 @@ public final class AutoTest {
             if (worldTicks == 100) {
                 setupWorld(mc);
             }
+            if (worldTicks == 190) {
+                mc.inGameHud.getChatHud().clear(false);
+            }
             if (worldTicks == 200) {
                 running = true;
                 Clock.fixed(1f / 60f);
@@ -93,15 +96,18 @@ public final class AutoTest {
 
     private static void setupWorld(MinecraftClient mc) {
         String name = mc.player.getName().getString();
-        command(mc, "gamerule doMobSpawning false");
-        command(mc, "gamerule doDaylightCycle false");
+        command(mc, "gamerule send_command_feedback false");
+        command(mc, "gamerule spawn_mobs false");
+        command(mc, "gamerule advance_time false");
+        command(mc, "gamerule advance_weather false");
         command(mc, "kill @e[type=!minecraft:player]");
-        command(mc, "time set 11650");
+        command(mc, "time set 12200");
         command(mc, "weather clear");
-        command(mc, "tp " + name + " ~ ~ ~ 90 6");
+        command(mc, "tp " + name + " ~ ~ ~ 90 4");
         command(mc, "item replace entity " + name + " hotbar.0 with minecraft:iron_sword");
-        command(mc, "summon minecraft:mannequin ^ ^ ^3.0 {NoAI:1b,Rotation:[270f,0f]}");
-        command(mc, "summon minecraft:zombie ^1.6 ^ ^4.2 {NoAI:1b,PersistenceRequired:1b,Rotation:[250f,0f]}");
+        command(mc, "execute at " + name + " rotated 90 0 run summon minecraft:zombie ^0.3 ^ ^2.6 {NoAI:1b,PersistenceRequired:1b,equipment:{head:{id:\"minecraft:leather_helmet\",count:1}}}");
+        command(mc, "execute at " + name + " rotated 90 0 run summon minecraft:mannequin ^-1.2 ^ ^3.6 {NoAI:1b}");
+        command(mc, "execute as @e[type=!minecraft:player] at @s run tp @s ~ ~ ~ facing entity " + name + " feet");
     }
 
     private static void script() {
@@ -126,6 +132,9 @@ public final class AutoTest {
             record("mode", 50);
         });
         waitFrames(52);
+        add(m -> hoverCard(m, 0, 128f));
+        waitFrames(70);
+        add(m -> shot("02b_tooltip"));
         add(m -> gui().expandForTest("TargetESP", false));
         add(m -> record("collapse", 50));
         waitFrames(52);

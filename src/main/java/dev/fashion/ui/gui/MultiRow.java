@@ -131,4 +131,9 @@ public final class MultiRow extends Row {
         }
         return false;
     }
+
+    @Override
+    public String tip() {
+        return setting.description();
+    }
 }

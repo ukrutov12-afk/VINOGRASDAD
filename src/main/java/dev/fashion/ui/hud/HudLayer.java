@@ -233,7 +233,7 @@ public final class HudLayer {
     }
 
     public static void resetPositions() {
-        float[][] defaults = {{0.008f, 0.012f}, {0.992f, 0.012f}, {0.008f, 0.985f}, {0.62f, 0.6f}};
+        float[][] defaults = {{0.008f, 0.012f}, {0.992f, 0.012f}, {0.008f, 0.985f}, {0.5f, 0.74f}};
         for (int i = 0; i < ELEMENTS.size(); i++) {
             ELEMENTS.get(i).fx = defaults[i][0];
             ELEMENTS.get(i).fy = defaults[i][1];

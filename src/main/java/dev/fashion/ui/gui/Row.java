@@ -96,6 +96,10 @@ public abstract class Row {
     public void mouseUp(float mx, float my) {
     }
 
+    public String tip() {
+        return null;
+    }
+
     public boolean hit(float mx, float my) {
         return rh > 2f && Ui.inside(mx, my, rx, ry, rw, rh);
     }

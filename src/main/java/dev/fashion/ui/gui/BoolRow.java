@@ -39,4 +39,9 @@ public final class BoolRow extends Row {
         }
         return false;
     }
+
+    @Override
+    public String tip() {
+        return setting.description();
+    }
 }

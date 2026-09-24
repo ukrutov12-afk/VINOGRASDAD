@@ -33,7 +33,7 @@ public final class TargetCard extends HudElement {
     private Identifier prevSkin;
 
     public TargetCard() {
-        super("target", "Карточка цели", 0.62f, 0.6f);
+        super("target", "Карточка цели", 0.5f, 0.74f);
     }
 
     private LivingEntity source(boolean editing) {

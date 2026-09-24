@@ -60,6 +60,12 @@ public final class ClickGui extends FashionScreen {
     private final Spring footerIn = new Spring(0f, Motion.ARRIVAL);
     private final Spring emptyIn = new Spring(0f, Motion.FADE);
     private final Spring barAlpha = new Spring(0f, Motion.FADE);
+    private final Spring tipAlpha = new Spring(0f, Motion.FADE);
+    private final Spring tipX = new Spring(0f, Motion.FOLLOW);
+    private final Spring tipY = new Spring(0f, Motion.FOLLOW);
+    private String tipText;
+    private String tipShown;
+    private float tipTime;
     private final FadeText title;
     private final FadeText subtitle;
     private boolean dragging;
@@ -265,6 +271,60 @@ public final class ClickGui extends FashionScreen {
         paintWindow(c, dt);
         c.popAlpha();
         c.pop();
+        paintTip(c, dt);
+    }
+
+    private void paintTip(Canvas c, float dt) {
+        String tip = null;
+        if (!dragging && !closing) {
+            for (ModuleCard card : listed) {
+                String t = card.tipAt(mouseX, mouseY);
+                if (t != null) {
+                    tip = t;
+                    break;
+                }
+            }
+        }
+        if (tip != null && tip.equals(tipText)) {
+            tipTime += dt;
+        } else {
+            tipText = tip;
+            tipTime = 0f;
+        }
+        boolean show = tipText != null && tipTime > 0.55f;
+        if (show && !tipText.equals(tipShown)) {
+            if (tipAlpha.get() < 0.05f) {
+                tipX.snap(mouseX + 12f);
+                tipY.snap(mouseY + 16f);
+            }
+            tipShown = tipText;
+        }
+        tipAlpha.to(show ? 1f : 0f);
+        tipX.to(mouseX + 12f);
+        tipY.to(mouseY + 16f);
+        tipAlpha.update(dt);
+        tipX.update(dt);
+        tipY.update(dt);
+        float a = tipAlpha.get();
+        if (a < 0.01f || tipShown == null) {
+            return;
+        }
+        java.util.List<String> lines = Ui.wrap(Font.regular(), 9f, tipShown, 190f, 3);
+        float w = 0f;
+        for (String l : lines) {
+            w = Math.max(w, Font.regular().width(l, 9f, 0f));
+        }
+        w += 20f;
+        float h = 12f + lines.size() * 12f;
+        float x = tipX.get();
+        float y = tipY.get() + (1f - a) * 6f;
+        c.pushAlpha(a);
+        c.shape(x, y, w, h).radius(8f).fill(0xE00C0A16).glass().border(c.px(), 0x40FFFFFF).chrome(1f)
+                .shadow(0f, 4f, 12f, 0.5f).glow(8f, Colors.withAlpha(Theme.GLOW, 0.14f)).draw();
+        for (int i = 0; i < lines.size(); i++) {
+            c.text(Font.regular(), 9f).color(Theme.TEXT_2).drawMid(lines.get(i), x + 10f, y + 12f + i * 12f);
+        }
+        c.popAlpha();
     }
 
     private void paintWindow(Canvas c, float dt) {
@@ -277,12 +337,24 @@ public final class ClickGui extends FashionScreen {
                 .draw();
         c.shape(wx, wy, SIDE, H).radii(R, 0f, 0f, R)
                 .horizontal(Colors.withAlpha(0xFF030208, 0.42f), Colors.withAlpha(0xFF030208, 0.12f)).draw();
+        paintAmbience(c);
         Draw.vHairline(c, wx + SIDE, wy + 16f, H - 32f, 0x2EFFFFFF);
         paintBrand(c, dt);
         paintCategories(c, dt);
         paintFooter(c, dt);
         paintHeader(c, dt);
         paintContent(c, dt);
+    }
+
+    private void paintAmbience(Canvas c) {
+        float t = Clock.time();
+        c.pushClip(wx, wy, W, H, R);
+        c.shape(wx, wy + H * 0.45f, W, H * 0.55f).vertical(0x00050409, 0x5C050409).draw();
+        float lx = wx + 70f + 12f * (float) Math.sin(t * 0.21f);
+        float ly = wy + 28f + 6f * (float) Math.cos(t * 0.17f);
+        c.shape(lx - 40f, ly - 16f, 80f, 32f).radius(16f).fill(0).glow(90f, Colors.withAlpha(0xFF8C7BFF, 0.075f)).draw();
+        c.shape(wx + W - 150f, wy - 40f, 120f, 40f).radius(20f).fill(0).glow(80f, Colors.withAlpha(0xFF5B4FC4, 0.06f)).draw();
+        c.popClip();
     }
 
     private void paintBrand(Canvas c, float dt) {
@@ -470,7 +542,7 @@ public final class ClickGui extends FashionScreen {
         title.update(dt);
         subtitle.update(dt);
         paintFade(c, title, Font.bold(), 16.5f, hx, wy + 27f, 0xFFFFFFFF, 0xFFCFC5F7, 9f);
-        paintFade(c, subtitle, Font.regular(), 9f, hx, wy + 45f, Theme.TEXT_3, Theme.TEXT_3, 5f);
+        paintFade(c, subtitle, Font.regular(), 9f, hx, wy + 45f, Theme.TEXT_2, Theme.TEXT_2, 5f);
 
         float sw = 180f;
         float sx = wx + W - 18f - sw;

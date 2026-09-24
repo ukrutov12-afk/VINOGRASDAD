@@ -216,6 +216,18 @@ public final class ModuleCard {
         c.pop();
     }
 
+    public String tipAt(float mx, float my) {
+        if (!contains(mx, my) || !expanded) {
+            return null;
+        }
+        for (Row r : rows) {
+            if (r.hit(mx, my)) {
+                return r.tip();
+            }
+        }
+        return null;
+    }
+
     public boolean contains(float mx, float my) {
         return ph > 0f && Ui.inside(mx, my, px, py, pw, ph);
     }

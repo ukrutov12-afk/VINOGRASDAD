@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "fashion",
+  "version": "${version}",
+  "name": "Fashion",
+  "description": "Клиент с собственным слоем рендера интерфейса: SDF-формы, стекло с размытием мира, SDF-шрифт и пружинная физика движения.",
+  "authors": ["fashion"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.fashion.FashionClient"]
+  },
+  "mixins": ["fashion.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

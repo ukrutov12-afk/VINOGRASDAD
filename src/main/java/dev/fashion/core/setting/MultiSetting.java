@@ -53,11 +53,17 @@ public final class MultiSetting extends Setting<Integer> {
         }
         int m = 0;
         for (JsonElement el : e.getAsJsonArray()) {
-            int i = options.indexOf(el.getAsString());
+            String name = el.getAsString();
+            int i = options.indexOf(name);
+            if (i < 0 && (name.equals("Монстры") || name.equals("Животные"))) {
+                i = options.indexOf("Мобы");
+            }
             if (i >= 0) {
                 m |= 1 << i;
             }
         }
-        value = m;
+        if (m != 0 || e.getAsJsonArray().isEmpty()) {
+            value = m;
+        }
     }
 }

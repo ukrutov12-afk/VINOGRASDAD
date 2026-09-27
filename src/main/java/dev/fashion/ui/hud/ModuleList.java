@@ -119,23 +119,26 @@ public final class ModuleList extends HudElement {
             }
             return dead;
         });
+        int n = Math.max(1, act.size());
         for (Entry e : order) {
             float p = e.in.get();
             float ew = e.w.get();
             float slide = (1f - p) * (ew + 14f);
             float ex = right ? x + w - ew + slide : x - slide;
             float ey = y + e.y.get();
+            float t = Math.max(0f, Math.min(1f, e.y.get() / Math.max(1f, (n - 1) * ROW)));
+            int accent = Colors.mix(Theme.ACCENT_HI, Theme.ACCENT, t);
             c.pushAlpha(Math.max(0f, Math.min(1f, p * 1.4f)));
-            c.shape(ex, ey, ew, ROW).radii(right ? 5f : 0f, right ? 0f : 5f, right ? 0f : 5f, right ? 5f : 0f)
-                    .fill(0xB80A0813).glass()
-                    .border(c.px(), 0x26FFFFFF)
+            c.shape(ex, ey, ew, ROW).radii(right ? 4f : 0f, right ? 0f : 4f, right ? 0f : 4f, right ? 4f : 0f)
+                    .horizontal(right ? Colors.mulAlpha(Theme.PLAQUE, 0.82f) : Theme.PLAQUE, right ? Theme.PLAQUE : Colors.mulAlpha(Theme.PLAQUE, 0.82f))
+                    .glass().clouds(0.5f)
                     .draw();
             float bx = right ? ex + ew - 2f : ex;
-            c.shape(bx, ey + 2f, 2f, ROW - 4f).radius(1f).vertical(Theme.ACCENT_HI, Theme.ACCENT)
-                    .glow(5f, Colors.withAlpha(Theme.GLOW, 0.9f)).draw();
+            c.shape(bx, ey + 1.5f, 2f, ROW - 3f).radius(1f).vertical(accent, Colors.mix(accent, Theme.ACCENT_DEEP, 0.4f))
+                    .glow(5f, Colors.withAlpha(accent, 0.85f)).draw();
             float tx = right ? ex + 7f : ex + 9f;
             float cy = ey + ROW * 0.5f;
-            tx += c.text(Font.medium(), SIZE).color(Theme.TEXT).drawMid(e.module.name(), tx, cy);
+            tx += c.text(Font.medium(), SIZE).color(Colors.mix(Theme.TEXT, accent, 0.18f)).drawMid(e.module.name(), tx, cy);
             c.text(Font.regular(), SIZE - 0.5f).color(Theme.TEXT_3).drawMid(suffix(e.module), tx, cy);
             c.popAlpha();
         }

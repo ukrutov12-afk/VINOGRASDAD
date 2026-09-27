@@ -16,7 +16,7 @@ public final class ClickPearl extends Module {
     private boolean wasDown;
 
     public ClickPearl() {
-        super("ClickPearl", "Бросает эндер-жемчуг по клику из любого слота хотбара", Category.PLAYER);
+        super("ClickPearl", "Бросает эндер-жемчуг по клику из любого слота хотбара", Category.PLAYER, '\uE034');
     }
 
     @Override

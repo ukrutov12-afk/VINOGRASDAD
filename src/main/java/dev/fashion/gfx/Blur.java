@@ -23,6 +23,7 @@ public final class Blur {
     private static final int MAX_LEVELS = 6;
 
     private static SimpleFramebuffer[] levels = new SimpleFramebuffer[0];
+    private static SimpleFramebuffer light;
     private static GpuBuffer uniforms;
     private static int stride;
     private static int sourceW;
@@ -52,6 +53,10 @@ public final class Blur {
         return reuses;
     }
 
+    public static GpuTextureView light() {
+        return ready ? light.getColorAttachmentView() : null;
+    }
+
     public static void invalidate() {
         signature = 0L;
     }
@@ -74,6 +79,7 @@ public final class Blur {
             pass(encoder, Pipelines.BLUR_DOWN, prev, levels[i], linear, i);
             prev = levels[i].getColorAttachmentView();
         }
+        pass(encoder, Pipelines.BLUR_UP, levels[1].getColorAttachmentView(), light, linear, MAX_LEVELS * 2 - 1);
         for (int i = levelCount - 1; i > 0; i--) {
             pass(encoder, Pipelines.BLUR_UP, levels[i].getColorAttachmentView(), levels[i - 1], linear, levelCount + (levelCount - 1 - i));
         }
@@ -116,6 +122,9 @@ public final class Blur {
         for (SimpleFramebuffer fb : levels) {
             fb.delete();
         }
+        if (light != null) {
+            light.delete();
+        }
         levels = new SimpleFramebuffer[count];
         int lw = w;
         int lh = h;
@@ -124,6 +133,7 @@ public final class Blur {
             lh = Math.max(1, lh / 2);
             levels[i] = new SimpleFramebuffer("fashion blur " + i, lw, lh, false);
         }
+        light = new SimpleFramebuffer("fashion blur light", levels[0].textureWidth, levels[0].textureHeight, false);
         sourceW = w;
         sourceH = h;
         levelCount = count;
@@ -147,6 +157,7 @@ public final class Blur {
             boolean last = i == 1;
             write(encoder, slot, o / levels[i].textureWidth, o / levels[i].textureHeight, last ? 1f : 0f, 0.9f);
         }
+        write(encoder, MAX_LEVELS * 2 - 1, 0.75f / levels[1].textureWidth, 0.75f / levels[1].textureHeight, 0f, 1f);
     }
 
     private static void write(CommandEncoder encoder, int slot, float tx, float ty, float tone, float gain) {

@@ -25,6 +25,7 @@ import dev.fashion.core.Category;
 import dev.fashion.core.Modules;
 import dev.fashion.gfx.Blur;
 import dev.fashion.ui.ClickGui;
+import org.lwjgl.glfw.GLFW;
 import dev.fashion.ui.FashionScreen;
 import dev.fashion.ui.hud.HudEditorScreen;
 import dev.fashion.ui.hud.HudElement;
@@ -111,75 +112,88 @@ public final class AutoTest {
     }
 
     private static void script() {
-        MinecraftClient mc = MinecraftClient.getInstance();
         add(m -> shot("00_world_hud"));
         add(m -> {
             m.setScreen(new ClickGui());
-            record("open", 70);
+            record("open", 80);
         });
-        waitFrames(72);
+        waitFrames(82);
         add(m -> shot("01_gui_combat"));
         add(m -> {
-            hoverCard(m, 0, 20f);
-            record("hover", 40);
+            hoverCard(m, 0, 24f);
+            record("hover", 36);
         });
-        waitFrames(42);
-        add(m -> shot("02_gui_hover"));
+        waitFrames(38);
         add(m -> {
-            hoverCard(m, 1, 20f);
-            Modules.attackAura.settings().stream().filter(s -> s.name().equals("Наведение")).findFirst()
-                    .ifPresent(s -> ((dev.fashion.core.setting.ModeSetting) s).set(2));
-            record("mode", 50);
+            gui().expandForTest("AttackAura", true);
+            record("expand", 70);
         });
-        waitFrames(52);
-        add(m -> hoverCard(m, 0, 128f));
-        waitFrames(70);
-        add(m -> shot("02b_tooltip"));
-        add(m -> gui().expandForTest("TargetESP", false));
-        add(m -> record("collapse", 50));
-        waitFrames(52);
-        add(m -> shot("03_gui_collapse"));
-        add(m -> gui().expandForTest("TargetESP", true));
-        waitFrames(30);
+        waitFrames(72);
+        add(m -> shot("02_gui_expanded"));
+        add(m -> hoverCard(m, 0, 118f));
+        waitFrames(60);
+        add(m -> shot("03_tooltip"));
         add(m -> {
-            gui().selectForTest(Category.MOVEMENT);
-            record("switch", 60);
+            hoverCard(m, 0, 24f);
+            gui().listenForTest("TargetESP");
+            record("bind", 90);
         });
         waitFrames(40);
+        add(m -> gui().keyForTest(GLFW.GLFW_KEY_G));
+        waitFrames(52);
+        add(m -> shot("04_bind"));
         add(m -> {
-            Modules.byName("AutoSprint").setEnabled(true);
-            record("toggle", 40);
+            Modules.targetEsp.setEnabled(true);
+            record("toggle", 60);
         });
-        waitFrames(42);
-        add(m -> shot("04_gui_toggle"));
+        waitFrames(20);
+        add(m -> Modules.targetEsp.setEnabled(false));
+        waitFrames(12);
+        add(m -> Modules.targetEsp.setEnabled(true));
+        waitFrames(30);
+        add(m -> shot("05_toggle_notifications"));
+        add(m -> {
+            gui().expandForTest("AttackAura", false);
+            record("collapse", 60);
+        });
+        waitFrames(62);
         add(m -> {
             gui().selectForTest(Category.RENDER);
+            record("switch", 60);
         });
+        waitFrames(62);
+        add(m -> gui().expandForTest("Notifications", true));
         waitFrames(60);
-        add(m -> shot("05_gui_render"));
+        add(m -> shot("06_gui_render"));
+        add(m -> gui().expandForTest("Notifications", false));
         add(m -> {
             gui().typeForTest("a");
             record("search", 50);
         });
         waitFrames(52);
-        add(m -> shot("06_gui_search"));
-        add(m -> gui().selectForTest(Category.COMBAT));
+        add(m -> shot("07_gui_search"));
+        add(m -> {
+            gui().selectForTest(Category.COMBAT);
+            gui().expandForTest("AttackAura", true);
+            gui().expandForTest("TargetESP", true);
+        });
         waitFrames(50);
         add(m -> {
-            FashionScreen.testMouseX = m.getFramebuffer().textureWidth * 0.6f;
+            FashionScreen.testMouseX = m.getFramebuffer().textureWidth * 0.62f;
             FashionScreen.testMouseY = m.getFramebuffer().textureHeight * 0.5f;
-            gui().scrollForTest(-5f);
+            gui().scrollForTest(-6f);
             record("scroll", 90);
         });
         waitFrames(92);
-        add(m -> shot("07_gui_scrolled"));
+        add(m -> shot("08_gui_scrolled"));
         add(m -> {
-            gui().scrollForTest(8f);
-            gui().dragForTest(-160f, 26f);
+            gui().scrollForTest(10f);
+            dev.fashion.core.Config.saveNow();
+            gui().dragForTest(-150f, 24f);
             record("drag", 60);
         });
         waitFrames(62);
-        add(m -> shot("08_gui_dragged"));
+        add(m -> shot("09_gui_dragged"));
         add(m -> {
             gui().close();
             record("close", 60);
@@ -188,13 +202,12 @@ public final class AutoTest {
         add(m -> {
             FashionScreen.testMouseX = -1f;
             Modules.attackAura.setEnabled(true);
-            Modules.targetEsp.setEnabled(true);
             record("target", 170);
         });
         waitFrames(60);
-        add(m -> shot("09_target_hud"));
+        add(m -> shot("10_target_hud"));
         waitFrames(112);
-        add(m -> shot("10_target_switch"));
+        add(m -> shot("11_target_switch"));
         add(m -> m.setScreen(new HudEditorScreen()));
         waitFrames(30);
         add(m -> {
@@ -211,7 +224,7 @@ public final class AutoTest {
             });
         }
         waitFrames(20);
-        add(m -> shot("11_hud_editor_snap"));
+        add(m -> shot("12_hud_editor_snap"));
         add(m -> HudLayer.endDrag());
         waitFrames(25);
         add(m -> {
@@ -221,7 +234,7 @@ public final class AutoTest {
         waitFrames(50);
         add(m -> m.setScreen(new ClickGui()));
         waitFrames(90);
-        add(m -> shot("12_gui_reopen"));
+        add(m -> shot("13_gui_reopen"));
         waitFrames(40);
         add(m -> FashionClient.LOGGER.info("autotest: blur recomputes={} reuses={}", Blur.recomputes(), Blur.reuses()));
         add(m -> {

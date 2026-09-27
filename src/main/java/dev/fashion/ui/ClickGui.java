@@ -21,15 +21,17 @@ import dev.fashion.gfx.Canvas;
 import dev.fashion.gfx.Colors;
 import dev.fashion.gfx.Font;
 import dev.fashion.ui.gui.ModuleCard;
+import dev.fashion.ui.gui.Row;
 import dev.fashion.ui.hud.HudEditorScreen;
 
 public final class ClickGui extends FashionScreen {
-    public static final float W = 620f;
-    public static final float H = 400f;
-    public static final float SIDE = 172f;
+    public static final float W = 650f;
+    public static final float H = 420f;
+    public static final float SIDE = 184f;
     private static final float R = 18f;
     private static final float GAP = 10f;
-    private static final float ITEM_H = 31f;
+    private static final float ITEM_H = 32f;
+    private static final float HEADER = 70f;
 
     private static final Map<Module, ModuleCard> CARDS = new LinkedHashMap<>();
 
@@ -57,15 +59,22 @@ public final class ClickGui extends FashionScreen {
     private final int[] badgeCount = new int[Category.values().length];
     private final Spring hudHover = new Spring(0f, Motion.HOVER);
     private final Spring hudPress = new Spring(0f, Motion.PRESS);
+    private final Spring[] iconHover = {new Spring(0f, Motion.HOVER), new Spring(0f, Motion.HOVER)};
+    private final Spring[] iconPress = {new Spring(0f, Motion.PRESS), new Spring(0f, Motion.PRESS)};
     private final Spring footerIn = new Spring(0f, Motion.ARRIVAL);
     private final Spring emptyIn = new Spring(0f, Motion.FADE);
     private final Spring barAlpha = new Spring(0f, Motion.FADE);
+    private final Spring logoSpin = new Spring(-2.4f, 7.5f, 0.55f);
+    private final Spring logoEnergy = new Spring(1f, 3.5f, 1f);
+    private final Spring logoHover = new Spring(0f, Motion.HOVER);
     private final Spring tipAlpha = new Spring(0f, Motion.FADE);
     private final Spring tipX = new Spring(0f, Motion.FOLLOW);
     private final Spring tipY = new Spring(0f, Motion.FOLLOW);
-    private String tipText;
-    private String tipShown;
+    private final Spring tipW = new Spring(0f, Motion.FLOW);
+    private final FadeText tipText = new FadeText("");
+    private Row tipRow;
     private float tipTime;
+    private boolean tipShown;
     private final FadeText title;
     private final FadeText subtitle;
     private boolean dragging;
@@ -77,6 +86,7 @@ public final class ClickGui extends FashionScreen {
     private float wy;
     private float lastIndex = -1f;
     private boolean first = true;
+    private boolean logoWasHovered;
 
     public ClickGui() {
         super("Fashion");
@@ -98,6 +108,8 @@ public final class ClickGui extends FashionScreen {
         }
         footerIn.to(1f, 0.3f);
         backdrop.to(1f);
+        logoSpin.to(0f);
+        logoEnergy.to(0f);
         for (Module m : Modules.all()) {
             CARDS.computeIfAbsent(m, ModuleCard::new);
         }
@@ -110,14 +122,6 @@ public final class ClickGui extends FashionScreen {
         subtitle = new FadeText("");
     }
 
-    public static float windowWidth() {
-        return W;
-    }
-
-    public static float windowHeight() {
-        return H;
-    }
-
     public float windowX() {
         return wx;
     }
@@ -128,6 +132,16 @@ public final class ClickGui extends FashionScreen {
 
     public float uiScale() {
         return scale;
+    }
+
+    @Override
+    public boolean shouldPause() {
+        return true;
+    }
+
+    @Override
+    protected boolean fullyClosed() {
+        return backdrop.get() < 0.01f;
     }
 
     private boolean searching() {
@@ -165,7 +179,7 @@ public final class ClickGui extends FashionScreen {
                 leaving++;
             }
         }
-        float base = first ? 0.16f : leaving > 0 ? 0.06f : 0f;
+        float base = first ? 0.18f : leaving > 0 ? 0.06f : 0f;
         int arriving = 0;
         for (ModuleCard card : want) {
             if (!card.listed) {
@@ -174,7 +188,7 @@ public final class ClickGui extends FashionScreen {
                     card.placed = false;
                 }
                 card.presence.motion(Motion.ARRIVAL);
-                card.presence.to(1f, base + arriving * 0.04f);
+                card.presence.to(1f, base + arriving * 0.045f);
                 arriving++;
             }
         }
@@ -183,51 +197,57 @@ public final class ClickGui extends FashionScreen {
         first = false;
     }
 
-    private void layoutCards(float colW, float dt) {
-        ModuleCard[] last = new ModuleCard[2];
-        int[] rank = new int[2];
-        for (int i = 0; i < listed.size(); i++) {
-            ModuleCard card = listed.get(i);
-            int col = i % 2;
-            float tx = col * (colW + GAP);
-            float ty = last[col] == null ? 0f : last[col].y.get() + last[col].h.get() + GAP;
-            card.x.to(tx);
-            card.y.to(ty);
-            card.scrollLag.motion(Math.max(15f, 34f - rank[col] * 2.2f), 0.8f);
-            card.scrollLag.to(scroll.offset);
-            card.update(dt, colW);
-            if (!card.placed) {
-                card.x.snap(tx);
-                card.y.snap(ty);
-                card.scrollLag.snap(scroll.offset);
-                card.placed = true;
+    private void layoutCards(float cw, float dt) {
+        float colW = (cw - GAP) * 0.5f;
+        float rowY = 0f;
+        float animY = 0f;
+        int rank = 0;
+        int i = 0;
+        while (i < listed.size()) {
+            ModuleCard a = listed.get(i);
+            ModuleCard b = i + 1 < listed.size() ? listed.get(i + 1) : null;
+            boolean pair = b != null && !a.expanded() && !b.expanded();
+            if (pair) {
+                place(a, 0f, animY, colW, cw, rank, dt);
+                place(b, colW + GAP, animY, colW, cw, rank, dt);
+                float hT = Math.max(a.targetHeight(colW), b.targetHeight(colW));
+                float hA = Math.max(a.h.get(), b.h.get());
+                rowY += hT + GAP;
+                animY = Math.max(a.y.get(), b.y.get()) + hA + GAP;
+                i += 2;
+            } else {
+                place(a, 0f, animY, cw, cw, rank, dt);
+                rowY += a.targetHeight(cw) + GAP;
+                animY = a.y.get() + a.h.get() + GAP;
+                i++;
             }
-            last[col] = card;
-            rank[col]++;
+            rank++;
         }
+        contentBottom = rowY;
         for (ModuleCard card : CARDS.values()) {
             if (!card.listed && card.alive()) {
-                card.update(dt, colW);
+                card.update(dt, card.w.get());
             }
         }
     }
 
-    private float contentHeight() {
-        float max = 0f;
-        for (ModuleCard card : listed) {
-            max = Math.max(max, card.y.target + card.h.target);
+    private float contentBottom;
+
+    private void place(ModuleCard card, float tx, float ty, float tw, float full, int rank, float dt) {
+        card.x.to(tx);
+        card.y.to(ty);
+        card.w.to(tw);
+        card.scrollLag.motion(Math.max(15f, 34f - rank * 2.4f), 0.8f);
+        card.scrollLag.to(scroll.offset);
+        if (!card.placed) {
+            card.x.snap(tx);
+            card.y.snap(ty);
+            card.w.snap(tw);
+            card.h.snap(card.targetHeight(tw));
+            card.scrollLag.snap(scroll.offset);
+            card.placed = true;
         }
-        return max;
-    }
-
-    @Override
-    public boolean shouldPause() {
-        return true;
-    }
-
-    @Override
-    protected boolean fullyClosed() {
-        return backdrop.get() < 0.01f;
+        card.update(dt, tw);
     }
 
     @Override
@@ -236,7 +256,10 @@ public final class ClickGui extends FashionScreen {
         backdrop.to(closing ? 0f : 1f);
         backdrop.update(dt);
         float bd = backdrop.get();
-        c.shape(0f, 0f, sw, sh).vertical(Colors.withAlpha(0xFF05040A, 0.18f * bd), Colors.withAlpha(0xFF05040A, 0.42f * bd)).draw();
+        c.pushAlpha(bd);
+        c.shape(0f, 0f, sw, sh).fill(Theme.DIM).backdrop().draw();
+        c.popAlpha();
+        c.shape(0f, 0f, sw, sh).vertical(Colors.withAlpha(0xFF05040A, 0.05f * bd), Colors.withAlpha(0xFF05040A, 0.3f * bd)).draw();
 
         if (dragging) {
             float nx = dragX + (mouseX - dragMx);
@@ -274,71 +297,17 @@ public final class ClickGui extends FashionScreen {
         paintTip(c, dt);
     }
 
-    private void paintTip(Canvas c, float dt) {
-        String tip = null;
-        if (!dragging && !closing) {
-            for (ModuleCard card : listed) {
-                String t = card.tipAt(mouseX, mouseY);
-                if (t != null) {
-                    tip = t;
-                    break;
-                }
-            }
-        }
-        if (tip != null && tip.equals(tipText)) {
-            tipTime += dt;
-        } else {
-            tipText = tip;
-            tipTime = 0f;
-        }
-        boolean show = tipText != null && tipTime > 0.55f;
-        if (show && !tipText.equals(tipShown)) {
-            if (tipAlpha.get() < 0.05f) {
-                tipX.snap(mouseX + 12f);
-                tipY.snap(mouseY + 16f);
-            }
-            tipShown = tipText;
-        }
-        tipAlpha.to(show ? 1f : 0f);
-        tipX.to(mouseX + 12f);
-        tipY.to(mouseY + 16f);
-        tipAlpha.update(dt);
-        tipX.update(dt);
-        tipY.update(dt);
-        float a = tipAlpha.get();
-        if (a < 0.01f || tipShown == null) {
-            return;
-        }
-        java.util.List<String> lines = Ui.wrap(Font.regular(), 9f, tipShown, 190f, 3);
-        float w = 0f;
-        for (String l : lines) {
-            w = Math.max(w, Font.regular().width(l, 9f, 0f));
-        }
-        w += 20f;
-        float h = 12f + lines.size() * 12f;
-        float x = tipX.get();
-        float y = tipY.get() + (1f - a) * 6f;
-        c.pushAlpha(a);
-        c.shape(x, y, w, h).radius(8f).fill(0xE00C0A16).glass().border(c.px(), 0x40FFFFFF).chrome(1f)
-                .shadow(0f, 4f, 12f, 0.5f).glow(8f, Colors.withAlpha(Theme.GLOW, 0.14f)).draw();
-        for (int i = 0; i < lines.size(); i++) {
-            c.text(Font.regular(), 9f).color(Theme.TEXT_2).drawMid(lines.get(i), x + 10f, y + 12f + i * 12f);
-        }
-        c.popAlpha();
-    }
-
     private void paintWindow(Canvas c, float dt) {
         float px = c.px();
-        c.shape(wx, wy, W, H).radius(R).fill(Theme.WINDOW).glass()
-                .shadow(0f, 20f, 48f, 0.62f)
-                .border(px * 1.25f, 0x66FFFFFF)
+        c.shape(wx, wy, W, H).radius(R).fill(Theme.WINDOW).glass().clouds(1f)
+                .shadow(0f, 22f, 50f, 0.7f)
+                .border(px * 1.3f, 0x5CFFFFFF)
                 .chrome(1f)
-                .glow(30f, Colors.withAlpha(Theme.GLOW, 0.09f))
+                .glow(34f, Colors.withAlpha(Theme.GLOW, 0.1f))
                 .draw();
-        c.shape(wx, wy, SIDE, H).radii(R, 0f, 0f, R)
-                .horizontal(Colors.withAlpha(0xFF030208, 0.42f), Colors.withAlpha(0xFF030208, 0.12f)).draw();
-        paintAmbience(c);
-        Draw.vHairline(c, wx + SIDE, wy + 16f, H - 32f, 0x2EFFFFFF);
+        c.shape(wx, wy, SIDE, H).radii(R, 0f, 0f, R).horizontal(Theme.SIDEBAR, Colors.mulAlpha(Theme.SIDEBAR, 0.55f)).draw();
+        c.shape(wx + SIDE, wy + 14f, px, H - 28f).fill(0x1EFFFFFF).draw();
+        c.shape(wx + SIDE + px, wy + 14f, px, H - 28f).fill(0x66000000).draw();
         paintBrand(c, dt);
         paintCategories(c, dt);
         paintFooter(c, dt);
@@ -346,45 +315,37 @@ public final class ClickGui extends FashionScreen {
         paintContent(c, dt);
     }
 
-    private void paintAmbience(Canvas c) {
-        float t = Clock.time();
-        c.pushClip(wx, wy, W, H, R);
-        c.shape(wx, wy + H * 0.45f, W, H * 0.55f).vertical(0x00050409, 0x5C050409).draw();
-        float lx = wx + 70f + 12f * (float) Math.sin(t * 0.21f);
-        float ly = wy + 28f + 6f * (float) Math.cos(t * 0.17f);
-        c.shape(lx - 40f, ly - 16f, 80f, 32f).radius(16f).fill(0).glow(90f, Colors.withAlpha(0xFF8C7BFF, 0.075f)).draw();
-        c.shape(wx + W - 150f, wy - 40f, 120f, 40f).radius(20f).fill(0).glow(80f, Colors.withAlpha(0xFF5B4FC4, 0.06f)).draw();
-        c.popClip();
-    }
-
     private void paintBrand(Canvas c, float dt) {
-        float bx = wx + 10f;
-        float by = wy + 10f;
-        float bw = SIDE - 20f;
-        float bh = 62f;
-        c.shape(bx, by, bw, bh).radius(12f).vertical(0xFF110D22, 0xFF06050C).storm(Theme.CLOUD)
-                .border(c.px(), 0x2EFFFFFF).chrome(0.9f).shadow(0f, 2f, 6f, 0.35f).draw();
-        float t = Clock.time();
-        float tw = 0.5f + 0.5f * (float) Math.sin(t * 1.3f);
-        float starX = bx + 25f;
-        float starY = by + bh * 0.5f;
-        c.shape(starX - 5f, starY - 5f, 10f, 10f).radius(5f).fill(0x00FFFFFF)
-                .glow(15f + 4f * tw, Colors.withAlpha(0xFFBCB0FF, 0.5f + 0.15f * tw)).draw();
-        c.push();
-        c.rotateAround(starX, starY, (float) Math.sin(t * 0.35f) * 0.12f);
-        float ss = 18f + 0.8f * tw;
-        Draw.chromeIcon(c, '\uE006', starX, starY, ss, 3.5f, Colors.withAlpha(0xFFFFFFFF, 0.75f));
-        c.pop();
-        c.text(Font.display(), 12.5f).color(0xFFFFFFFF).chrome(1f).tracking(0.07f)
-                .glow(3f, Colors.withAlpha(0xFFB9A8FF, 0.35f)).drawMid("FASHION", bx + 45f, starY - 6f);
-        c.text(Font.semibold(), 7.5f).color(Theme.TEXT_3).tracking(0.18f).drawMid("STORM · 2.0", bx + 45f, starY + 9f);
+        float lx = wx + 36f;
+        float ly = wy + 40f;
+        boolean over = Ui.inside(mouseX, mouseY, wx + 10f, wy + 10f, SIDE - 20f, 62f);
+        if (over && !logoWasHovered) {
+            logoSpin.impulse(5.5f);
+            logoEnergy.snap(Math.max(logoEnergy.get(), 0.8f));
+        }
+        logoWasHovered = over;
+        logoHover.to(over ? 1f : 0f);
+        logoHover.update(dt);
+        logoSpin.update(dt);
+        logoEnergy.update(dt);
+        if (Math.abs(logoSpin.velocity) < 0.02f && Math.abs(logoSpin.get()) > (float) Math.PI) {
+            float turns = (float) (Math.round(logoSpin.get() / (Math.PI / 2)) * (Math.PI / 2));
+            logoSpin.snap(logoSpin.get() - turns);
+        }
+        float sway = (float) Math.sin(Clock.time() * 0.45f) * 0.05f;
+        float sz = 46f * (1f + 0.04f * logoHover.get());
+        Logo.draw(c, lx, ly, sz, logoSpin.get() + sway, Math.max(logoEnergy.get(), 0.35f * logoHover.get()));
+        c.text(Font.display(), 13f).color(0xFFFFFFFF).chrome(1f).tracking(0.07f)
+                .glow(3f, Colors.withAlpha(0xFFB9A8FF, 0.3f)).drawMid("FASHION", wx + 66f, ly - 5f);
+        c.text(Font.semibold(), 7f).color(Theme.TEXT_3).tracking(0.22f).drawMid("STORM EDITION", wx + 67f, ly + 10f);
+        Draw.hairline(c, wx + 14f, wy + 78f, SIDE - 28f, 0x24FFFFFF);
     }
 
     private void paintCategories(Canvas c, float dt) {
         float x = wx + 10f;
         float w = SIDE - 20f;
-        float y0 = wy + 104f;
-        c.text(Font.semibold(), 7.5f).color(Theme.TEXT_3).tracking(0.16f).drawMid("РАЗДЕЛЫ", x + 12f, wy + 90f);
+        float y0 = wy + 108f;
+        c.text(Font.semibold(), 7f).color(Theme.TEXT_3).tracking(0.2f).drawMid("РАЗДЕЛЫ", x + 12f, wy + 94f);
         Category[] cats = Category.values();
         int idx = category.ordinal();
         if (lastIndex < 0f) {
@@ -400,20 +361,22 @@ public final class ClickGui extends FashionScreen {
         indBottom.to(y0 + idx * ITEM_H + ITEM_H - wy);
         indTop.update(dt);
         indBottom.update(dt);
-        indAlpha.to(searching() ? 0.3f : 1f);
+        indAlpha.to(searching() ? 0.25f : 1f);
         indAlpha.update(dt);
         float it = wy + indTop.get();
         float ib = wy + indBottom.get();
         float inA = Math.max(0f, Math.min(1f, catIn[idx].get()));
         c.pushAlpha(indAlpha.get() * inA);
         c.shape(x, it, w, ib - it).radius(9f)
-                .horizontal(Colors.withAlpha(Theme.ACCENT, 0.26f), Colors.withAlpha(Theme.ACCENT, 0.04f))
-                .border(c.px(), Colors.withAlpha(Theme.ACCENT_HI, 0.3f))
-                .glow(10f, Colors.withAlpha(Theme.GLOW, 0.16f))
+                .horizontal(0xFF211A38, 0xFF15121F)
+                .border(c.px() * 1.1f, Colors.withAlpha(Theme.GLOW_SILVER, 0.45f))
+                .chrome(0.8f)
+                .shadow(0f, 3f, 8f, 0.5f)
+                .glow(10f, Colors.withAlpha(Theme.GLOW, 0.2f))
                 .draw();
         float barH = Math.max(4f, ib - it - 16f);
-        c.shape(x + 1.5f, it + (ib - it - barH) * 0.5f, 2.5f, barH).radius(1.25f).fill(Theme.ACCENT_HI)
-                .glow(6f, Colors.withAlpha(Theme.GLOW, 0.85f)).draw();
+        c.shape(x + 1.5f, it + (ib - it - barH) * 0.5f, 2.5f, barH).radius(1.25f).vertical(0xFFFFFFFF, Theme.ACCENT_HI)
+                .glow(6f, Colors.withAlpha(Theme.GLOW, 0.9f)).draw();
         c.popAlpha();
         for (int i = 0; i < cats.length; i++) {
             Category cat = cats[i];
@@ -431,12 +394,12 @@ public final class ClickGui extends FashionScreen {
             c.translate((1f - in) * -14f + hv * 1.5f, 0f);
             c.pushAlpha(Math.max(0f, Math.min(1f, in)));
             if (hv > 0.01f) {
-                c.shape(x, iy, w, ITEM_H).radius(9f).fill(Colors.withAlpha(0xFFFFFFFF, 0.035f * hv * (1f - act))).draw();
+                c.shape(x, iy, w, ITEM_H).radius(9f).fill(Colors.withAlpha(0xFFFFFFFF, 0.03f * hv * (1f - act))).draw();
             }
             float cy = iy + ITEM_H * 0.5f;
-            int iconCol = Colors.mix(Colors.mix(Theme.TEXT_3, Theme.TEXT_2, hv), Theme.ACCENT_HI, act);
-            Draw.icon(c, cat.icon, x + 17f, cy, 12f, iconCol, 4f * act, Colors.withAlpha(Theme.GLOW, 0.7f * act));
-            c.text(Font.medium(), 10.5f).color(Colors.mix(Theme.TEXT_2, Theme.TEXT, Math.max(act, hv * 0.7f))).drawMid(cat.title, x + 32f, cy);
+            int iconCol = Colors.mix(Colors.mix(Theme.TEXT_3, Theme.TEXT_2, hv), 0xFFFFFFFF, act);
+            Draw.icon(c, cat.icon, x + 18f, cy, 13f, iconCol, 4f * act, Colors.withAlpha(Theme.GLOW_SILVER, 0.7f * act));
+            c.text(Font.medium(), 10.5f).color(Colors.mix(Theme.TEXT_OFF, Theme.TEXT, Math.max(act, hv * 0.7f))).drawMid(cat.title, x + 34f, cy);
             int count = 0;
             for (Module m : Modules.of(cat)) {
                 if (m.enabled()) {
@@ -459,8 +422,8 @@ public final class ClickGui extends FashionScreen {
                 c.push();
                 c.scaleAround(bx + bw * 0.5f, cy, bs, bs);
                 c.shape(bx, cy - 7f, bw, 14f).radius(7f)
-                        .fill(Colors.withAlpha(Theme.ACCENT, 0.16f + 0.2f * act))
-                        .border(c.px(), Colors.withAlpha(Theme.ACCENT_HI, 0.25f + 0.25f * act))
+                        .fill(Colors.withAlpha(Theme.ACCENT, 0.14f + 0.2f * act))
+                        .border(c.px(), Colors.withAlpha(Theme.ACCENT_HI, 0.25f + 0.3f * act))
                         .draw();
                 c.text(Font.semibold(), 8f).color(Colors.mix(Theme.TEXT_2, Theme.ACCENT_HI, 0.5f + 0.5f * act)).drawMidCenter(n, bx + bw * 0.5f, cy);
                 c.pop();
@@ -475,7 +438,15 @@ public final class ClickGui extends FashionScreen {
     }
 
     private float hudY() {
-        return wy + H - 94f;
+        return wy + H - 98f;
+    }
+
+    private float iconButtonX(int i) {
+        return wx + SIDE - 12f - 24f - i * 28f;
+    }
+
+    private float iconButtonY() {
+        return wy + H - 49f;
     }
 
     private void paintFooter(Canvas c, float dt) {
@@ -485,46 +456,70 @@ public final class ClickGui extends FashionScreen {
         float x = hudX();
         float y = hudY();
         float w = SIDE - 20f;
-        boolean over = Ui.inside(mouseX, mouseY, x, y, w, 30f);
+        boolean over = Ui.inside(mouseX, mouseY, x, y, w, 32f);
         hudHover.to(over ? 1f : 0f);
         hudHover.update(dt);
         float hv = hudHover.get();
+        c.pushAlpha(Math.max(0f, Math.min(1f, fin)));
         c.push();
         c.translate(0f, (1f - fin) * 14f - hv * 1.5f);
-        c.pushAlpha(Math.max(0f, Math.min(1f, fin)));
         float s = 1f + 0.015f * hv - 0.03f * hudPress.get();
-        c.scaleAround(x + w * 0.5f, y + 15f, s, s);
-        c.shape(x, y, w, 30f).radius(9f)
-                .vertical(Colors.withAlpha(0xFF1C1730, 0.7f + 0.3f * hv), Colors.withAlpha(0xFF0E0B18, 0.8f))
-                .border(c.px(), Colors.mix(0x22FFFFFF, Colors.withAlpha(Theme.ACCENT_HI, 0.5f), hv))
-                .chrome(0.6f)
-                .shadow(0f, 2f + 2f * hv, 6f + 5f * hv, 0.35f)
-                .glow(9f, Colors.withAlpha(Theme.GLOW, 0.22f * hv))
+        c.scaleAround(x + w * 0.5f, y + 16f, s, s);
+        c.shape(x, y, w, 32f).radius(10f)
+                .vertical(Colors.mix(Theme.CARD_TOP, Theme.CARD_HOVER_TOP, hv), Theme.CARD_BOTTOM)
+                .border(c.px() * 1.1f, Colors.mix(0x26FFFFFF, Colors.withAlpha(Theme.GLOW_SILVER, 0.6f), hv))
+                .chrome(0.8f)
+                .shadow(0f, 2f + 3f * hv, 7f + 6f * hv, 0.45f)
+                .glow(10f, Colors.withAlpha(Theme.GLOW, 0.24f * hv))
                 .draw();
-        Draw.icon(c, '\uE007', x + 16f, y + 15f, 12f, Colors.mix(Theme.TEXT_2, Theme.ACCENT_HI, hv));
-        c.text(Font.medium(), 10f).color(Colors.mix(Theme.TEXT_2, Theme.TEXT, hv)).drawMid("Редактор HUD", x + 30f, y + 15f);
+        Draw.icon(c, '', x + 17f, y + 16f, 13f, Colors.mix(Theme.TEXT_2, 0xFFFFFFFF, hv));
+        c.text(Font.medium(), 10f).color(Colors.mix(Theme.TEXT_2, Theme.TEXT, hv)).drawMid("Редактор HUD", x + 32f, y + 16f);
         c.push();
-        c.rotateAround(x + w - 14f + 2f * hv, y + 15f, (float) (-Math.PI * 0.5));
-        Draw.icon(c, '\uE008', x + w - 14f + 2f * hv, y + 15f, 8f, Colors.withAlpha(Theme.TEXT_3, 0.9f));
+        c.rotateAround(x + w - 14f + 2f * hv, y + 16f, (float) (-Math.PI * 0.5));
+        Draw.icon(c, '', x + w - 14f + 2f * hv, y + 16f, 8f, Colors.withAlpha(Theme.TEXT_3, 0.9f));
         c.pop();
         c.pop();
 
-        float py = wy + H - 54f;
+        float py = wy + H - 58f;
         MinecraftClient mc = MinecraftClient.getInstance();
         String name = mc.getSession() != null ? mc.getSession().getUsername() : "Player";
-        boolean drew = mc.player != null && PlayerHead.draw(c, PlayerHead.skinOf(mc.player), x + 4f, py + 6f, 28f, 8f, 0xFFFFFFFF);
+        boolean drew = mc.player != null && PlayerHead.draw(c, PlayerHead.skinOf(mc.player), x + 4f, py + 7f, 28f, 8f, 0xFFFFFFFF);
         if (!drew) {
-            c.shape(x + 4f, py + 6f, 28f, 28f).radius(8f).vertical(0xFF2A2145, 0xFF151027).draw();
+            c.shape(x + 4f, py + 7f, 28f, 28f).radius(8f).vertical(0xFF2A2145, 0xFF151027).draw();
         }
-        c.shape(x + 27f, py + 29f, 7f, 7f).radius(3.5f).fill(0xFF55E39B).border(c.px() * 1.5f, 0xFF0A0812)
+        c.shape(x + 27f, py + 30f, 7f, 7f).radius(3.5f).fill(0xFF55E39B).border(c.px() * 1.5f, 0xFF0A0812)
                 .glow(4f, Colors.withAlpha(0xFF55E39B, 0.6f)).draw();
-        c.text(Font.semibold(), 10.5f).color(Theme.TEXT).drawMid(name, x + 42f, py + 15f);
-        c.text(Font.regular(), 8.5f).color(Theme.TEXT_3).drawMid("в игре · Fashion", x + 42f, py + 27f);
+        c.pushClip(x + 28f, py - 8f, iconButtonX(1) - x - 32f, 60f, 0f, 10f);
+        c.text(Font.semibold(), 10f).color(Theme.TEXT).drawMid(name, x + 40f, py + 16f);
+        c.text(Font.regular(), 8f).color(Theme.TEXT_3).drawMid("конфиг · default", x + 40f, py + 28f);
+        c.popClip();
+        char[] icons = {'', ''};
+        for (int i = 0; i < 2; i++) {
+            float bx = iconButtonX(i);
+            float by = iconButtonY();
+            boolean ov = Ui.inside(mouseX, mouseY, bx, by, 24f, 24f);
+            iconHover[i].to(ov ? 1f : 0f);
+            iconHover[i].update(dt);
+            iconPress[i].update(dt);
+            float ih = iconHover[i].get();
+            float is = 1f + 0.05f * ih - 0.08f * iconPress[i].get();
+            c.push();
+            c.scaleAround(bx + 12f, by + 12f, is, is);
+            c.translate(0f, -1.2f * ih);
+            c.shape(bx, by, 24f, 24f).radius(7f)
+                    .vertical(Colors.mix(Theme.CARD_TOP, Theme.CARD_HOVER_TOP, ih), Theme.CARD_BOTTOM)
+                    .border(c.px(), Colors.mix(0x22FFFFFF, Colors.withAlpha(Theme.GLOW_SILVER, 0.6f), ih))
+                    .shadow(0f, 1.5f + 2f * ih, 4f + 4f * ih, 0.4f)
+                    .glow(7f, Colors.withAlpha(Theme.GLOW, 0.25f * ih))
+                    .draw();
+            Draw.icon(c, icons[i], bx + 12f, by + 12f, 12f, Colors.mix(Theme.TEXT_3, 0xFFFFFFFF, ih));
+            c.pop();
+        }
         c.popAlpha();
     }
 
     private void paintHeader(Canvas c, float dt) {
-        float hx = wx + SIDE + 22f;
+        float hx = wx + SIDE + 24f;
         int total = listed.size();
         int active = 0;
         for (ModuleCard card : listed) {
@@ -541,12 +536,12 @@ public final class ClickGui extends FashionScreen {
         subtitle.set(sub);
         title.update(dt);
         subtitle.update(dt);
-        paintFade(c, title, Font.bold(), 16.5f, hx, wy + 27f, 0xFFFFFFFF, 0xFFCFC5F7, 9f);
-        paintFade(c, subtitle, Font.regular(), 9f, hx, wy + 45f, Theme.TEXT_2, Theme.TEXT_2, 5f);
+        paintFade(c, title, Font.bold(), 17f, hx, wy + 30f, 0xFFFFFFFF, 0xFFCBC3EC, 9f);
+        paintFade(c, subtitle, Font.regular(), 9f, hx, wy + 48f, Theme.TEXT_2, Theme.TEXT_2, 5f);
 
-        float sw = 180f;
-        float sx = wx + W - 18f - sw;
-        float sy = wy + 18f;
+        float sw = 190f;
+        float sx = wx + W - 20f - sw;
+        float sy = wy + 21f;
         float sh = 28f;
         searchHover.to(Ui.inside(mouseX, mouseY, sx, sy, sw, sh) ? 1f : 0f);
         focus.to(focused ? 1f : 0f);
@@ -559,11 +554,12 @@ public final class ClickGui extends FashionScreen {
         float f = focus.get();
         float hv = searchHover.get();
         c.shape(sx, sy, sw, sh).radius(9f)
-                .vertical(Colors.mix(0xFF09080F, 0xFF0F0B1D, f), Colors.mix(0xFF0B0A13, 0xFF120D24, f))
+                .vertical(Colors.mix(Theme.INSET, 0xFF0E0A1B, f), Colors.mix(Theme.INSET_TOP, 0xFF120D24, f))
                 .border(c.px() * 1.1f, Colors.mix(Colors.mix(0x1CFFFFFF, 0x33FFFFFF, hv), Colors.withAlpha(Theme.ACCENT_HI, 0.62f), f))
                 .glow(9f, Colors.withAlpha(Theme.GLOW, 0.3f * f))
                 .draw();
-        Draw.icon(c, '\uE005', sx + 15f, sy + sh * 0.5f, 11f, Colors.mix(Theme.TEXT_3, Theme.ACCENT_HI, f), 3f * f, Colors.withAlpha(Theme.GLOW, 0.6f * f));
+        c.shape(sx + 1f, sy + 1f, sw - 2f, 5f).radii(8f, 8f, 0f, 0f).vertical(0x40000000, 0x00000000).draw();
+        Draw.icon(c, '', sx + 15f, sy + sh * 0.5f, 11f, Colors.mix(Theme.TEXT_3, Theme.ACCENT_HI, f), 3f * f, Colors.withAlpha(Theme.GLOW, 0.6f * f));
         float tx = sx + 28f;
         float ty = sy + sh * 0.5f;
         c.pushClip(sx + 24f, sy, sw - 44f, sh, 0f);
@@ -594,10 +590,10 @@ public final class ClickGui extends FashionScreen {
             c.push();
             c.scaleAround(cx, cy, Math.max(0f, ci), Math.max(0f, ci));
             c.shape(cx - 7f, cy - 7f, 14f, 14f).radius(7f).fill(Colors.withAlpha(0xFFFFFFFF, overClear ? 0.14f : 0.07f)).draw();
-            Draw.icon(c, '\uE00A', cx, cy, 8f, Theme.TEXT_2);
+            Draw.icon(c, '', cx, cy, 8f, Theme.TEXT_2);
             c.pop();
         }
-        Draw.hairline(c, wx + SIDE + 14f, wy + 62f, W - SIDE - 28f, 0x2AFFFFFF);
+        Draw.hairline(c, wx + SIDE + 16f, wy + 66f, W - SIDE - 32f, 0x26FFFFFF);
     }
 
     private void paintFade(Canvas c, FadeText text, Font.Face face, float size, float x, float cy, int top, int bottom, float travel) {
@@ -613,19 +609,19 @@ public final class ClickGui extends FashionScreen {
     }
 
     private float contentX() {
-        return wx + SIDE + 14f;
+        return wx + SIDE + 16f;
     }
 
     private float contentY() {
-        return wy + 70f;
+        return wy + HEADER + 6f;
     }
 
     private float contentW() {
-        return W - SIDE - 28f;
+        return W - SIDE - 32f;
     }
 
     private float contentH() {
-        return H - 70f;
+        return H - HEADER - 6f;
     }
 
     private void paintContent(Canvas c, float dt) {
@@ -633,15 +629,14 @@ public final class ClickGui extends FashionScreen {
         float cy = contentY();
         float cw = contentW();
         float ch = contentH();
-        float colW = (cw - GAP) * 0.5f;
-        scroll.bounds(contentHeight() + 12f, ch - 4f);
+        layoutCards(cw, dt);
+        scroll.bounds(contentBottom + 8f, ch - 4f);
         scroll.update(dt);
-        layoutCards(colW, dt);
-        c.pushClip(cx - 12f, cy - 7f, cw + 24f, ch + 7f, R, 14f);
+        c.pushClip(cx - 12f, cy - 6f, cw + 24f, ch + 6f, R, 14f);
         boolean interactive = !dragging && !closing;
         for (ModuleCard card : CARDS.values()) {
             if (card.alive()) {
-                card.paint(c, cx, cy, colW, mouseX, mouseY, dt, interactive && card.listed && Ui.inside(mouseX, mouseY, cx - 12f, cy, cw + 24f, ch));
+                card.paint(c, cx, cy, mouseX, mouseY, dt, interactive && card.listed && Ui.inside(mouseX, mouseY, cx - 12f, cy, cw + 24f, ch));
             }
         }
         c.popClip();
@@ -651,7 +646,7 @@ public final class ClickGui extends FashionScreen {
         if (e > 0.01f) {
             c.pushAlpha(e);
             float mid = cy + ch * 0.42f + (1f - e) * 10f;
-            Draw.icon(c, '\uE005', cx + cw * 0.5f, mid - 14f, 22f, Theme.TEXT_3, 6f, Colors.withAlpha(Theme.GLOW, 0.4f));
+            Draw.icon(c, '', cx + cw * 0.5f, mid - 14f, 22f, Theme.TEXT_3, 6f, Colors.withAlpha(Theme.GLOW, 0.4f));
             c.text(Font.medium(), 10.5f).color(Theme.TEXT_2).drawMidCenter("Ничего не найдено", cx + cw * 0.5f, mid + 12f);
             c.popAlpha();
         }
@@ -676,6 +671,82 @@ public final class ClickGui extends FashionScreen {
         }
     }
 
+    private void paintTip(Canvas c, float dt) {
+        Row row = null;
+        ModuleCard owner = null;
+        if (!dragging && !closing) {
+            for (ModuleCard card : listed) {
+                Row r = card.rowAt(mouseX, mouseY);
+                if (r != null && r.tip() != null) {
+                    row = r;
+                    owner = card;
+                    break;
+                }
+            }
+        }
+        if (row != null && row == tipRow) {
+            tipTime += dt;
+        } else {
+            tipRow = row;
+            tipTime = 0f;
+        }
+        boolean show = tipRow != null && tipTime > 0.5f;
+        float a = tipAlpha.get();
+        if (show) {
+            tipText.set(tipRow.tip());
+            String t = tipText.current();
+            float tw = Font.regular().width(t, 9f, 0f) + 22f;
+            float lo = tipRow.left() - 4f;
+            float hi = tipRow.left() + tipRow.width() + 4f - tw;
+            float tx = Math.max(lo, Math.min(hi, mouseX + 14f));
+            float ty = tipRow.labelY() - 9f;
+            if (a < 0.05f) {
+                tipX.snap(tx);
+                tipY.snap(ty);
+                tipW.snap(tw);
+            }
+            tipX.to(tx);
+            tipY.to(ty);
+            tipW.to(tw);
+            tipShown = true;
+        }
+        tipAlpha.to(show ? 1f : 0f);
+        tipAlpha.update(dt);
+        tipX.update(dt);
+        tipY.update(dt);
+        tipW.update(dt);
+        tipText.update(dt);
+        a = tipAlpha.get();
+        if (a < 0.01f || !tipShown) {
+            return;
+        }
+        float x = tipX.get();
+        float y = tipY.get();
+        float w = tipW.get();
+        float s = 0.92f + 0.08f * a;
+        c.push();
+        c.scaleAround(x, y + 9f, s, s);
+        c.pushAlpha(a);
+        c.shape(x, y, w, 18f).radius(9f).vertical(0xFA17141F, 0xFA0F0D16)
+                .border(c.px(), 0x3DFFFFFF).chrome(0.7f)
+                .shadow(0f, 4f, 12f, 0.65f)
+                .glow(6f, Colors.withAlpha(Theme.GLOW, 0.14f))
+                .draw();
+        c.pushClip(x + 4f, y, w - 8f, 18f, 0f, 4f);
+        float p = tipText.progress();
+        if (tipText.previous() != null) {
+            c.pushAlpha(1f - Math.min(1f, p));
+            c.text(Font.regular(), 9f).color(Theme.TEXT_2).drawMid(tipText.previous(), x + 11f, y + 9f);
+            c.popAlpha();
+        }
+        c.pushAlpha(Math.max(0f, Math.min(1f, p)));
+        c.text(Font.regular(), 9f).color(Theme.TEXT_2).drawMid(tipText.current(), x + 11f, y + 9f);
+        c.popAlpha();
+        c.popClip();
+        c.popAlpha();
+        c.pop();
+    }
+
     private ModuleCard listeningCard() {
         for (ModuleCard card : CARDS.values()) {
             if (card.bind().listening()) {
@@ -688,9 +759,9 @@ public final class ClickGui extends FashionScreen {
     @Override
     protected boolean onMouseDown(float mx, float my, int button) {
         ModuleCard listening = listeningCard();
-        float sw = 180f;
-        float sx = wx + W - 18f - sw;
-        float sy = wy + 18f;
+        float sw = 190f;
+        float sx = wx + W - 20f - sw;
+        float sy = wy + 21f;
         if (Ui.inside(mx, my, sx, sy, sw, 28f)) {
             if (searching() && mx > sx + sw - 24f) {
                 query.setLength(0);
@@ -700,7 +771,7 @@ public final class ClickGui extends FashionScreen {
         }
         focused = false;
         float x = wx + 10f;
-        float y0 = wy + 104f;
+        float y0 = wy + 108f;
         Category[] cats = Category.values();
         for (int i = 0; i < cats.length; i++) {
             if (Ui.inside(mx, my, x, y0 + i * ITEM_H, SIDE - 20f, ITEM_H)) {
@@ -714,9 +785,25 @@ public final class ClickGui extends FashionScreen {
                 return true;
             }
         }
-        if (Ui.inside(mx, my, hudX(), hudY(), SIDE - 20f, 30f)) {
+        if (Ui.inside(mx, my, hudX(), hudY(), SIDE - 20f, 32f)) {
             hudPress.impulse(-4f);
             MinecraftClient.getInstance().setScreen(new HudEditorScreen());
+            return true;
+        }
+        for (int i = 0; i < 2; i++) {
+            if (Ui.inside(mx, my, iconButtonX(i), iconButtonY(), 24f, 24f)) {
+                iconPress[i].impulse(-5f);
+                if (i == 0) {
+                    Config.load();
+                } else {
+                    Config.saveNow();
+                }
+                return true;
+            }
+        }
+        if (Ui.inside(mx, my, wx + 10f, wy + 10f, SIDE - 20f, 62f)) {
+            logoSpin.impulse(9f);
+            logoEnergy.snap(1f);
             return true;
         }
         if (Ui.inside(mx, my, contentX() - 12f, contentY(), contentW() + 24f, contentH())) {
@@ -724,16 +811,16 @@ public final class ClickGui extends FashionScreen {
                 ModuleCard card = listed.get(i);
                 if (card.contains(mx, my)) {
                     if (listening != null && listening != card) {
-                        listening.bind().stopListening();
+                        listening.bind().stop();
                     }
                     return card.mouseDown(mx, my, button);
                 }
             }
         }
         if (listening != null) {
-            listening.bind().stopListening();
+            listening.bind().stop();
         }
-        if (button == 0 && Ui.inside(mx, my, wx, wy, W, 64f) || button == 0 && Ui.inside(mx, my, wx, wy, SIDE, 80f)) {
+        if (button == 0 && Ui.inside(mx, my, wx + SIDE, wy, W - SIDE, 64f) || button == 0 && Ui.inside(mx, my, wx, wy, SIDE, 80f)) {
             dragging = true;
             dragMx = mx;
             dragMy = my;
@@ -767,7 +854,7 @@ public final class ClickGui extends FashionScreen {
         ModuleCard listening = listeningCard();
         if (listening != null) {
             if (key == GLFW.GLFW_KEY_ESCAPE) {
-                listening.bind().stopListening();
+                listening.bind().stop();
             } else if (key == GLFW.GLFW_KEY_BACKSPACE || key == GLFW.GLFW_KEY_DELETE) {
                 listening.bind().assign(-1);
             } else {
@@ -847,6 +934,18 @@ public final class ClickGui extends FashionScreen {
                 card.setExpanded(e);
             }
         }
+    }
+
+    public void listenForTest(String module) {
+        for (ModuleCard card : CARDS.values()) {
+            if (card.module.name().equals(module)) {
+                card.bind().listen();
+            }
+        }
+    }
+
+    public void keyForTest(int key) {
+        onKey(key, 0);
     }
 
     public void scrollForTest(float notches) {

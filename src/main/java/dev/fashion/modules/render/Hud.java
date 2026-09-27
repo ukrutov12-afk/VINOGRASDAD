@@ -11,6 +11,6 @@ public final class Hud extends Module {
     public final BoolSetting targetHud = bool("Карточка цели", "Здоровье текущей цели", true);
 
     public Hud() {
-        super("HUD", "Вотермарка, список функций и координаты", Category.RENDER);
+        super("HUD", "Вотермарка, список функций и координаты", Category.RENDER, '\uE033');
     }
 }

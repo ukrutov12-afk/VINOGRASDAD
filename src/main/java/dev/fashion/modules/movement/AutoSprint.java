@@ -5,7 +5,7 @@ import dev.fashion.core.Module;
 
 public final class AutoSprint extends Module {
     public AutoSprint() {
-        super("AutoSprint", "Держит бег, пока персонаж идёт вперёд", Category.MOVEMENT);
+        super("AutoSprint", "Держит бег, пока персонаж идёт вперёд", Category.MOVEMENT, '\uE032');
     }
 
     @Override

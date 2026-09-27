@@ -119,6 +119,9 @@ public abstract class FashionScreen extends Screen {
         if (closing) {
             return true;
         }
+        if (dev.fashion.ui.hud.HudLayer.click()) {
+            return true;
+        }
         return onMouseDown(mouseX, mouseY, click.button());
     }
 

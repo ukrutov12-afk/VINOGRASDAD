@@ -33,7 +33,7 @@ public final class TargetCard extends HudElement {
     private Identifier prevSkin;
 
     public TargetCard() {
-        super("target", "Карточка цели", 0.5f, 0.74f);
+        super("target", "Карточка цели", 0.5f, 0.83f);
     }
 
     private LivingEntity source(boolean editing) {
@@ -122,7 +122,7 @@ public final class TargetCard extends HudElement {
         c.push();
         c.translate(shake.get(), 0f);
         c.scaleAround(x + w * 0.5f, y + h * 0.5f, s, s);
-        c.shape(x, y, w, h).radius(11f).fill(0xC80B0914).glass()
+        c.shape(x, y, w, h).radius(11f).fill(Theme.PLAQUE).glass().clouds(0.6f)
                 .border(c.px() * 1.1f, Colors.mix(0x4DFFFFFF, 0xCCFF5A6E, fl)).chrome(1f - fl)
                 .shadow(0f, 3f + 3f * lift.get(), 9f + 6f * lift.get(), 0.5f)
                 .glow(10f + 6f * fl, Colors.mix(Colors.withAlpha(Theme.GLOW, 0.1f), Colors.withAlpha(0xFFFF4D63, 0.55f), fl))

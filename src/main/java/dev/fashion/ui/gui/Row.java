@@ -15,6 +15,7 @@ import dev.fashion.ui.Ui;
 
 public abstract class Row {
     public final Spring shown = new Spring(1f, Motion.FLOW);
+    public final Spring wave = new Spring(0f, 15f, 0.7f);
     protected final Spring hover = new Spring(0f, Motion.HOVER);
     protected float rx;
     protected float ry;
@@ -54,6 +55,19 @@ public abstract class Row {
     public void update(float dt) {
         shown.to(visibleNow() ? 1f : 0f);
         shown.update(dt);
+        wave.update(dt);
+    }
+
+    public float left() {
+        return rx;
+    }
+
+    public float width() {
+        return rw;
+    }
+
+    public float labelY() {
+        return ry + 10f;
     }
 
     public final void paintRow(Canvas c, float x, float y, float w, float mx, float my, float dt) {
@@ -68,14 +82,18 @@ public abstract class Row {
         if (h < 0.5f) {
             return;
         }
-        float a = Math.max(0f, Math.min(1f, shown.get()));
+        float wv = wave.get();
+        float a = Math.max(0f, Math.min(1f, shown.get())) * Math.max(0f, Math.min(1f, wv * 1.3f));
+        if (a < 0.003f) {
+            return;
+        }
         boolean partial = h < full - 0.25f;
         if (partial) {
             c.pushClip(x - 6f, y, w + 12f, h, 0f);
         }
         c.pushAlpha(a);
         c.push();
-        c.translate(0f, (a - 1f) * 6f);
+        c.translate((1f - wv) * -8f, (Math.min(1f, shown.get()) - 1f) * 6f + (1f - wv) * 9f);
         if (hover.get() > 0.01f) {
             c.shape(x - 6f, y, w + 12f, full).radius(8f).fill(Colors.withAlpha(0xFFFFFFFF, 0.025f * hover.get())).draw();
         }
@@ -101,7 +119,7 @@ public abstract class Row {
     }
 
     public boolean hit(float mx, float my) {
-        return rh > 2f && Ui.inside(mx, my, rx, ry, rw, rh);
+        return rh > 2f && wave.get() > 0.5f && Ui.inside(mx, my, rx, ry, rw, rh);
     }
 
     protected static void label(Canvas c, String text, float x, float cy, float hover) {

@@ -298,82 +298,165 @@ def disc(cx, cy, r):
     return ("disc", cx, cy, r)
 
 
+T = 1.6
+
+
+def arc(cx, cy, r, a0, a1, n=48):
+    return [(cx + r * math.cos(a), cy + r * math.sin(a)) for a in np.linspace(a0, a1, n)]
+
+
+def kite(angle, length, width, shoulder, back=-0.02, cx=12.0, cy=12.0, scale=11.6):
+    dx = math.sin(angle)
+    dy = -math.cos(angle)
+    nx = math.cos(angle)
+    ny = math.sin(angle)
+    tip = (cx + dx * length * scale, cy + dy * length * scale)
+    sh = (cx + dx * shoulder * scale, cy + dy * shoulder * scale)
+    bk = (cx + dx * back * scale, cy + dy * back * scale)
+    return fill([tip, (sh[0] + nx * width * scale, sh[1] + ny * width * scale), bk,
+                 (sh[0] - nx * width * scale, sh[1] - ny * width * scale)])
+
+
+def ring(r0, r1, scale=11.6):
+    return ("ring", 12.0, 12.0, r0 * scale, r1 * scale)
+
+
+def star_points():
+    out = []
+    for k in range(4):
+        out.append(kite(k * math.pi / 2, 1.0, 0.1, 0.2))
+    for k in range(4):
+        out.append(kite(math.pi / 4 + k * math.pi / 2, 0.8, 0.082, 0.18))
+    for k in range(8):
+        out.append(kite(math.pi / 8 + k * math.pi / 4, 0.52, 0.05, 0.13))
+    return out
+
+
+def star_inlay():
+    out = []
+    for k in range(4):
+        out.append(kite(k * math.pi / 2, 0.86, 0.044, 0.3, 0.19))
+    for k in range(4):
+        out.append(kite(math.pi / 4 + k * math.pi / 2, 0.67, 0.036, 0.27, 0.19))
+    return out
+
+
 ICONS = {
     0xE000: [
-        stroke([(7.2, 16.8), (18.6, 5.4)], 2.3),
-        stroke([(18.6, 5.4), (19.4, 4.6)], 1.2),
-        stroke([(4.6, 14.2), (9.8, 19.4)], 2.3),
-        stroke([(6.3, 17.7), (3.8, 20.2)], 2.3),
+        stroke([(6.5, 17.5), (18.5, 5.5)], T),
+        stroke([(18.5, 5.5), (19.2, 4.8)], T * 0.7),
+        stroke([(4.8, 14.6), (9.4, 19.2)], T),
+        stroke([(6.2, 17.8), (4.0, 20.0)], T),
     ],
     0xE001: [
-        stroke([(5, 6), (11, 12), (5, 18)], 2.3),
-        stroke([(12.5, 6), (18.5, 12), (12.5, 18)], 2.3),
+        stroke([(5.5, 6.5), (11, 12), (5.5, 17.5)], T),
+        stroke([(12.5, 6.5), (18, 12), (12.5, 17.5)], T),
     ],
     0xE002: [
-        stroke(bez_q((2.2, 12), (12, 2.6), (21.8, 12)) + bez_q((21.8, 12), (12, 21.4), (2.2, 12))[:-1], 2.1, True),
-        disc(12, 12, 3.3),
+        stroke(bez_q((2.5, 12), (12, 3.2), (21.5, 12)) + bez_q((21.5, 12), (12, 20.8), (2.5, 12))[:-1], T, True),
+        stroke(circle_pts(12, 12, 3.1), T, True),
     ],
     0xE003: [
-        stroke(circle_pts(12, 7.8, 3.9), 2.1, True),
-        stroke([(4.6, 20.6)] + bez_c((4.6, 20.6), (4.6, 15.6), (8, 13.8), (12, 13.8)) + bez_c((12, 13.8), (16, 13.8), (19.4, 15.6), (19.4, 20.6)), 2.1),
+        stroke(circle_pts(12, 8, 3.7), T, True),
+        stroke([(5, 20.2)] + bez_c((5, 20.2), (5, 15.6), (8.2, 14), (12, 14)) + bez_c((12, 14), (15.8, 14), (19, 15.6), (19, 20.2)), T),
     ],
     0xE004: [
-        rbox(3.5, 3.5, 7.5, 7.5, 2.2),
-        rbox(13, 3.5, 7.5, 7.5, 2.2),
-        rbox(3.5, 13, 7.5, 7.5, 2.2),
-        rbox(13, 13, 7.5, 7.5, 2.2),
+        rbox_ring(4, 4, 6.8, 6.8, 1.8, T),
+        rbox_ring(13.2, 4, 6.8, 6.8, 1.8, T),
+        rbox_ring(4, 13.2, 6.8, 6.8, 1.8, T),
+        rbox_ring(13.2, 13.2, 6.8, 6.8, 1.8, T),
     ],
     0xE005: [
-        stroke(circle_pts(10.4, 10.4, 6.3), 2.2, True),
-        stroke([(15.1, 15.1), (19.8, 19.8)], 2.5),
-    ],
-    0xE006: [
-        fill([(12, 0.8)] + bez_q((12, 0.8), (13.5, 10.5), (23.2, 12)) + bez_q((23.2, 12), (13.5, 13.5), (12, 23.2))
-             + bez_q((12, 23.2), (10.5, 13.5), (0.8, 12)) + bez_q((0.8, 12), (10.5, 10.5), (12, 0.8))[:-1]),
+        stroke(circle_pts(10.6, 10.6, 6.0), T * 1.15, True),
+        stroke([(15.2, 15.2), (19.6, 19.6)], T * 1.3),
     ],
     0xE007: [
-        rbox_ring(3, 4, 18, 16, 3.2, 2.0),
-        stroke([(3.5, 9.5), (20.5, 9.5)], 2.0),
-        stroke([(10, 9.5), (10, 19.5)], 2.0),
+        rbox_ring(3.5, 4.5, 17, 15, 3, T),
+        stroke([(4, 9.5), (20, 9.5)], T),
+        stroke([(10, 9.5), (10, 19)], T),
     ],
-    0xE008: [stroke([(6, 9), (12, 15), (18, 9)], 2.3)],
-    0xE009: [stroke([(5, 12.5), (10, 17.5), (19, 7)], 2.5)],
-    0xE00A: [stroke([(6.5, 6.5), (17.5, 17.5)], 2.3), stroke([(17.5, 6.5), (6.5, 17.5)], 2.3)],
-    0xE00B: [
-        rbox_ring(2.5, 6, 19, 12.5, 2.8, 1.9),
-        disc(6.8, 10.2, 1.15), disc(10.3, 10.2, 1.15), disc(13.8, 10.2, 1.15), disc(17.3, 10.2, 1.15),
-        stroke([(8.2, 14.4), (15.8, 14.4)], 1.9),
-    ],
+    0xE008: [stroke([(6, 9), (12, 15), (18, 9)], T * 1.25)],
+    0xE009: [stroke([(5, 12.5), (10, 17.5), (19, 7)], T * 1.4)],
+    0xE00A: [stroke([(6.5, 6.5), (17.5, 17.5)], T * 1.3), stroke([(17.5, 6.5), (6.5, 17.5)], T * 1.3)],
     0xE00C: [
         disc(8.1, 9.2, 4.7),
         disc(15.9, 9.2, 4.7),
         fill([(3.75, 11.1), (12, 20.8), (20.25, 11.1), (12, 7.5)]),
     ],
-    0xE00D: [
-        stroke(circle_pts(12, 12, 7), 2.0, True),
-        stroke([(12, 1.8), (12, 6.2)], 2.0), stroke([(12, 17.8), (12, 22.2)], 2.0),
-        stroke([(1.8, 12), (6.2, 12)], 2.0), stroke([(17.8, 12), (22.2, 12)], 2.0),
-        disc(12, 12, 1.7),
-    ],
     0xE00E: [
-        stroke([(3.5, 7), (20.5, 7)], 2.0), disc(15, 7, 2.9),
-        stroke([(3.5, 17), (20.5, 17)], 2.0), disc(9, 17, 2.9),
+        stroke([(3.5, 7), (20.5, 7)], T), stroke(circle_pts(15, 7, 2.4), T, True),
+        stroke([(3.5, 17), (20.5, 17)], T), stroke(circle_pts(9, 17, 2.4), T, True),
     ],
-    0xE00F: [disc(12, 5, 1.8), disc(12, 12, 1.8), disc(12, 19, 1.8)],
-    0xE010: [fill([(13.6, 1.8), (4.4, 13.6), (11.2, 13.6), (10.2, 22.2), (19.6, 9.8), (12.8, 9.8)])],
-    0xE011: [stroke([(12, 5), (12, 19)], 2.3), stroke([(5, 12), (19, 12)], 2.3)],
     0xE012: [
-        stroke([(20, 12)] + [(12 + 8 * math.cos(a), 12 - 8 * math.sin(a)) for a in np.linspace(0, 1.62 * math.pi, 60)[1:]], 2.2),
-        stroke([(20.8, 7.6), (20, 12.4), (15.6, 10.6)], 2.2),
+        stroke([(20, 12)] + [(12 + 8 * math.cos(a), 12 - 8 * math.sin(a)) for a in np.linspace(0, 1.62 * math.pi, 60)[1:]], T),
+        stroke([(20.6, 7.4), (20, 12.4), (15.4, 10.6)], T),
     ],
     0xE013: [
-        stroke([(12, 3), (12, 21)], 2.0), stroke([(3, 12), (21, 12)], 2.0),
-        stroke([(12, 3), (9.4, 5.6)], 2.0), stroke([(12, 3), (14.6, 5.6)], 2.0),
-        stroke([(12, 21), (9.4, 18.4)], 2.0), stroke([(12, 21), (14.6, 18.4)], 2.0),
-        stroke([(3, 12), (5.6, 9.4)], 2.0), stroke([(3, 12), (5.6, 14.6)], 2.0),
-        stroke([(21, 12), (18.4, 9.4)], 2.0), stroke([(21, 12), (18.4, 14.6)], 2.0),
+        stroke(circle_pts(12, 12, 8.2), T, True),
+        fill([(12, 4.6), (14.2, 12), (12, 13.2), (9.8, 12)]),
+        stroke([(12, 13.2), (14.2, 12), (12, 19.4), (9.8, 12), (12, 13.2)], T * 0.8),
     ],
+    0xE030: [
+        stroke(circle_pts(12, 12, 7.2), T, True),
+        stroke([(12, 2.5), (12, 7)], T), stroke([(12, 17), (12, 21.5)], T),
+        stroke([(2.5, 12), (7, 12)], T), stroke([(17, 12), (21.5, 12)], T),
+        fill([(12, 9.6), (14.4, 12), (12, 14.4), (9.6, 12)]),
+    ],
+    0xE031: [
+        stroke([(3.5, 9), (3.5, 3.5), (9, 3.5)], T), stroke([(15, 3.5), (20.5, 3.5), (20.5, 9)], T),
+        stroke([(20.5, 15), (20.5, 20.5), (15, 20.5)], T), stroke([(9, 20.5), (3.5, 20.5), (3.5, 15)], T),
+        stroke(circle_pts(12, 12, 2.6), T, True),
+    ],
+    0xE032: [
+        stroke([(3, 8), (11, 8)], T), stroke([(5, 12), (13, 12)], T), stroke([(3, 16), (10, 16)], T),
+        stroke([(14, 6.5), (19.5, 12), (14, 17.5)], T),
+    ],
+    0xE033: [
+        rbox_ring(3, 4, 18, 16, 3, T),
+        rbox_ring(5.6, 6.6, 5.4, 3.2, 1.2, T * 0.8),
+        stroke([(13.5, 8.2), (18, 8.2)], T * 0.8),
+        stroke([(5.6, 16.6), (11, 16.6)], T * 0.8),
+    ],
+    0xE034: [
+        stroke(circle_pts(12, 12, 4.6), T, True),
+        stroke([(12 + 9.5 * math.cos(a) * 1.0, 12 + 3.6 * math.sin(a)) for a in np.linspace(0.35, 2 * math.pi - 0.35, 60)], T * 0.85),
+        disc(16.2, 9.6, 1.3),
+    ],
+    0xE035: [
+        disc(6, 6, 1.4), disc(12, 6, 1.4), disc(18, 6, 1.4),
+        disc(6, 12, 1.4), disc(12, 12, 1.4), disc(18, 12, 1.4),
+        disc(6, 18, 1.4), disc(12, 18, 1.4), disc(18, 18, 1.4),
+    ],
+    0xE036: [
+        stroke([(6, 16.5)] + bez_c((6, 16.5), (7.2, 14.6), (6.6, 12), (6.6, 10.5)) + bez_c((6.6, 10.5), (6.6, 6.8), (9, 4.6), (12, 4.6))
+               + bez_c((12, 4.6), (15, 4.6), (17.4, 6.8), (17.4, 10.5)) + bez_c((17.4, 10.5), (17.4, 12), (16.8, 14.6), (18, 16.5)) + [(6, 16.5)], T),
+        stroke(arc(12, 17.8, 2.2, 0.15, math.pi - 0.15), T),
+    ],
+    0xE037: [
+        stroke(circle_pts(8, 12, 3.8), T, True),
+        stroke([(11.8, 12), (20.5, 12)], T), stroke([(17.5, 12), (17.5, 15.2)], T), stroke([(20.5, 12), (20.5, 14.6)], T),
+    ],
+    0xE038: [
+        stroke([(12, 3.5), (12, 14.5)], T), stroke([(7.8, 10.4), (12, 14.6), (16.2, 10.4)], T),
+        stroke([(4.5, 14.5), (4.5, 19.5), (19.5, 19.5), (19.5, 14.5)], T),
+    ],
+    0xE039: [
+        stroke([(12, 3.4), (21, 19.4), (3, 19.4), (12, 3.4)], T),
+        stroke([(12, 9.4), (12, 14.2)], T * 1.2), disc(12, 16.8, 1.1),
+    ],
+    0xE03A: [
+        stroke(arc(12, 12.8, 7.6, -math.pi / 2 + 0.75, 3 * math.pi / 2 - 0.75), T),
+        stroke([(12, 3.2), (12, 11.4)], T),
+    ],
+    0xE020: [ring(0.62, 0.805)],
+    0xE021: [ring(0.8, 0.865), ring(0.59, 0.64), ring(0.44, 0.475)],
+    0xE022: star_points() + [disc(12, 12, 0.205 * 11.6)],
+    0xE023: star_inlay(),
+    0xE024: [disc(12, 12, 0.15 * 11.6)],
 }
+
+HIRES = {0xE020, 0xE021, 0xE022, 0xE023, 0xE024}
+HIRES_EM = 160.0
 
 ICON_UNITS = 24.0
 
@@ -390,6 +473,9 @@ def shape_sd(px, py, sh):
         return sh[2] / 2 - seg_dist(px, py, a, b)
     if kind == "fill":
         return polygon_sd(px, py, [sh[1]])
+    if kind == "ring":
+        r = np.hypot(px - sh[1], py - sh[2])
+        return np.minimum(r - sh[3], sh[4] - r)
     if kind == "disc":
         return sh[3] - np.hypot(px - sh[1], py - sh[2])
     if kind in ("rbox", "rring"):
@@ -407,20 +493,21 @@ def shape_sd(px, py, sh):
 
 def icon_glyphs():
     out = []
-    k = EM / ICON_UNITS
     for cp, shapes in ICONS.items():
+        em = HIRES_EM if cp in HIRES else EM
+        k = em / ICON_UNITS
         x0 = -int(SPREAD)
         y0 = -int(SPREAD)
-        w = int(EM + 2 * SPREAD)
-        h = int(EM + 2 * SPREAD)
+        w = int(em + 2 * SPREAD)
+        h = int(em + 2 * SPREAD)
         px, py = grid(x0, y0, w, h)
         ux = px / k
         uy = ICON_UNITS - py / k
         sd = None
         for sh in shapes:
-            s = shape_sd(ux, uy, sh) * k
-            sd = s if sd is None else np.maximum(sd, s)
-        out.append({"cp": cp, "adv": 1.0, "img": encode(sd, w, h), "x0": x0, "y0": y0})
+            sv = shape_sd(ux, uy, sh) * k
+            sd = sv if sd is None else np.maximum(sd, sv)
+        out.append({"cp": cp, "adv": 1.0, "img": encode(sd, w, h), "x0": x0, "y0": y0, "em": em})
     return out
 
 
@@ -473,9 +560,10 @@ def main():
                 rows.append([g["cp"], round(g["adv"], 5)])
                 continue
             h, w = g["img"].shape
+            em = g.get("em", EM)
             rows.append([g["cp"], round(g["adv"], 5),
-                         round(g["x0"] / EM, 5), round(g["y0"] / EM, 5),
-                         round((g["x0"] + w) / EM, 5), round((g["y0"] + h) / EM, 5),
+                         round(g["x0"] / em, 5), round(g["y0"] / em, 5),
+                         round((g["x0"] + w) / em, 5), round((g["y0"] + h) / em, 5),
                          g["ax"], g["ay"], w, h])
         entry = dict(meta)
         entry["glyphs"] = rows

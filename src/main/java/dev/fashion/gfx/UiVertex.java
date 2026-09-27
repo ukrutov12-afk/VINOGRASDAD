@@ -37,6 +37,7 @@ public final class UiVertex {
     public static final float MODE_TEXT = 2f;
     public static final float MODE_IMAGE = 3f;
     public static final float MODE_STORM = 4f;
+    public static final float MODE_BACKDROP = 5f;
 
     private UiVertex() {
     }

@@ -45,6 +45,9 @@ public final class Overlay {
         if (mc.currentScreen instanceof FashionScreen screen) {
             screen.paintFrame(c, dt);
         }
+        if (mc.world != null && mc.player != null && !mc.options.hudHidden) {
+            HudLayer.paintTop(c, dt);
+        }
         glassLastFrame = c.usedGlass();
         c.flush(fb, Blur.texture(), Blur.ready(), Clock.time());
         if (AutoTest.enabled()) {

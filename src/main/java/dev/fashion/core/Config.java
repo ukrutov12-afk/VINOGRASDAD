@@ -42,6 +42,10 @@ public final class Config {
         dirty = true;
     }
 
+    public static boolean loading() {
+        return loading;
+    }
+
     public static JsonObject ui() {
         return ui;
     }
@@ -88,12 +92,19 @@ public final class Config {
             if (root.has("ui")) {
                 ui = root.getAsJsonObject("ui");
             }
+            Events.config(true, true);
         } catch (Exception e) {
             FashionClient.LOGGER.error("Config load failed", e);
+            Events.error("Конфиг не загружен", e.getClass().getSimpleName());
         } finally {
             loading = false;
             dirty = false;
         }
+    }
+
+    public static void saveNow() {
+        save();
+        Events.config(false, true);
     }
 
     public static void save() {
@@ -124,6 +135,7 @@ public final class Config {
             Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (Exception e) {
             FashionClient.LOGGER.error("Config save failed", e);
+            Events.error("Конфиг не сохранён", e.getClass().getSimpleName());
         }
     }
 }

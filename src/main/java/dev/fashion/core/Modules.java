@@ -10,13 +10,16 @@ import dev.fashion.modules.misc.Placeholder;
 import dev.fashion.modules.movement.AutoSprint;
 import dev.fashion.modules.player.ClickPearl;
 import dev.fashion.modules.render.Hud;
+import dev.fashion.modules.render.NotificationsModule;
 
 public final class Modules {
     private static final List<Module> ALL = new ArrayList<>();
+    public static boolean ready;
 
     public static AttackAura attackAura;
     public static TargetEsp targetEsp;
     public static Hud hud;
+    public static NotificationsModule notifications;
 
     private Modules() {
     }
@@ -26,9 +29,12 @@ public final class Modules {
         targetEsp = register(new TargetEsp());
         register(new AutoSprint());
         hud = register(new Hud());
+        notifications = register(new NotificationsModule());
         register(new ClickPearl());
         register(new Placeholder());
         hud.setEnabled(true);
+        notifications.setEnabled(true);
+        ready = true;
     }
 
     private static <M extends Module> M register(M m) {

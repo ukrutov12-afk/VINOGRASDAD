@@ -17,14 +17,20 @@ public abstract class Module {
     private final String name;
     private final String description;
     private final Category category;
+    private final char icon;
     private final List<Setting<?>> settings = new ArrayList<>();
     private boolean enabled;
     private int key = -1;
 
-    protected Module(String name, String description, Category category) {
+    protected Module(String name, String description, Category category, char icon) {
         this.name = name;
         this.description = description;
         this.category = category;
+        this.icon = icon;
+    }
+
+    public char icon() {
+        return icon;
     }
 
     public String name() {
@@ -52,8 +58,14 @@ public abstract class Module {
     }
 
     public void setKey(int key) {
+        if (this.key == key) {
+            return;
+        }
         this.key = key;
         Config.markDirty();
+        if (!Config.loading()) {
+            Events.bind(this);
+        }
     }
 
     public void toggle() {
@@ -71,6 +83,9 @@ public abstract class Module {
             onDisable();
         }
         Config.markDirty();
+        if (!Config.loading()) {
+            Events.toggled(this);
+        }
     }
 
     public String suffix() {

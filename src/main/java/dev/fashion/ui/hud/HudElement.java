@@ -115,11 +115,10 @@ public abstract class HudElement {
     }
 
     public static void panel(Canvas c, float x, float y, float w, float h, float r, float lift) {
-        c.shape(x, y, w, h).radius(r).fill(0xC20B0914).glass()
-                .border(c.px() * 1.1f, 0x4DFFFFFF).chrome(1f)
-                .shadow(0f, 2f + 3f * lift, 6f + 6f * lift, 0.45f)
-                .glow(8f, Colors.withAlpha(Theme.GLOW, 0.07f + 0.1f * lift))
-                .sheen(0.04f)
+        c.shape(x, y, w, h).radius(r).fill(Theme.PLAQUE).glass().clouds(0.6f)
+                .border(c.px() * 1.1f, 0x38FFFFFF).chrome(0.9f)
+                .shadow(0f, 3f + 3f * lift, 8f + 6f * lift, 0.55f)
+                .glow(7f, Colors.withAlpha(Theme.GLOW, 0.07f + 0.1f * lift))
                 .draw();
     }
 }

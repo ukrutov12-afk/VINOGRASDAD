@@ -33,7 +33,7 @@ public final class AttackAura extends Module {
     private boolean pendingHit;
 
     public AttackAura() {
-        super("AttackAura", "Наводится на ближайшую цель и бьёт по готовности удара", Category.COMBAT);
+        super("AttackAura", "Наводится на ближайшую цель и бьёт по готовности удара", Category.COMBAT, '\uE030');
     }
 
     public LivingEntity target() {

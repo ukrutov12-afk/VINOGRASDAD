@@ -23,6 +23,7 @@ public final class Pipelines {
             .withUniform("UiFrame", UniformType.UNIFORM_BUFFER)
             .withSampler("Atlas")
             .withSampler("Backdrop")
+            .withSampler("BackdropLight")
             .withSampler("Image")
             .withVertexFormat(UiVertex.FORMAT, VertexFormat.DrawMode.QUADS)
             .withBlend(PREMULTIPLIED)

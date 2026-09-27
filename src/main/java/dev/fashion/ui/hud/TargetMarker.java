@@ -10,7 +10,7 @@ import dev.fashion.core.Modules;
 import dev.fashion.gfx.Canvas;
 import dev.fashion.gfx.Colors;
 import dev.fashion.gfx.Projection;
-import dev.fashion.ui.Draw;
+import dev.fashion.ui.Logo;
 import dev.fashion.ui.Theme;
 
 public final class TargetMarker {
@@ -22,11 +22,12 @@ public final class TargetMarker {
     private final Spring flash = new Spring(0f, 9f, 1f);
     private final float[] tmp = new float[3];
     private boolean placed;
+    private float spinAngle;
     private LivingEntity last;
     private float lastHp;
 
     public void paint(Canvas c, float dt, float scale) {
-        LivingEntity t = Modules.targetEsp.enabled() ? Modules.attackAura.target() : null;
+        LivingEntity t = Modules.targetEsp.target();
         boolean visible = false;
         if (t != null) {
             float pt = Projection.tickProgress();
@@ -89,7 +90,8 @@ public final class TargetMarker {
             return;
         }
         float time = Clock.time();
-        float spin = Modules.targetEsp.spin.on() ? time * 0.9f : 0f;
+        spinAngle += Modules.targetEsp.spin.on() ? dt * 0.9f * Modules.targetEsp.speed.asFloat() : 0f;
+        float spin = spinAngle;
         float fl = flash.get();
         int col = Colors.mix(Theme.ACCENT_HI, 0xFFFF6B7D, fl);
         int glow = Colors.mix(Colors.withAlpha(Theme.GLOW, 0.9f), Colors.withAlpha(0xFFFF4D63, 0.9f), fl);
@@ -98,14 +100,16 @@ public final class TargetMarker {
         float y = cy.get();
         c.pushAlpha(Math.max(0f, Math.min(1f, p)));
         switch (Modules.targetEsp.style.index()) {
-            case 0 -> corners(c, x, y, s, col, glow, time);
+            case 0 -> corners(c, x, y, s, col, glow, time, spin);
             case 1 -> ring(c, x, y, s, col, glow, spin);
             default -> star(c, x, top.get() - 10f, col, glow, spin, p);
         }
         c.popAlpha();
     }
 
-    private static void corners(Canvas c, float x, float y, float s, int col, int glow, float time) {
+    private static void corners(Canvas c, float x, float y, float s, int col, int glow, float time, float spin) {
+        c.push();
+        c.rotateAround(x, y, spin);
         float breathe = 1.5f * (float) Math.sin(time * 2.6f);
         float half = s * 0.5f + breathe;
         float len = Math.max(5f, s * 0.2f);
@@ -120,6 +124,8 @@ public final class TargetMarker {
             c.shape(hx, ey - t * 0.5f, len, t).radius(t * 0.5f).fill(col).glow(5f, glow).draw();
             c.shape(ex - t * 0.5f, vy, t, len).radius(t * 0.5f).fill(col).glow(5f, glow).draw();
         }
+        c.shape(x - 1.6f, y - 1.6f, 3.2f, 3.2f).radius(1.6f).fill(col).glow(4f, glow).draw();
+        c.pop();
     }
 
     private static void ring(Canvas c, float x, float y, float s, int col, int glow, float spin) {
@@ -134,11 +140,7 @@ public final class TargetMarker {
     }
 
     private static void star(Canvas c, float x, float y, int col, int glow, float spin, float p) {
-        c.push();
-        c.rotateAround(x, y, spin * 0.6f);
-        float sz = 14f * (0.6f + 0.4f * p);
-        c.shape(x - 3f, y - 3f, 6f, 6f).radius(3f).fill(0).glow(10f, glow).draw();
-        Draw.chromeIcon(c, '\uE006', x, y, sz, 3f, glow);
-        c.pop();
+        float sz = 22f * (0.6f + 0.4f * p);
+        Logo.draw(c, x, y, sz, spin * 0.6f, 0.3f);
     }
 }

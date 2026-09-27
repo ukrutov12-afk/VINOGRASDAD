@@ -17,7 +17,7 @@ public final class HudLayer {
     private static final float MARGIN = 6f;
     private static final float SNAP = 6f;
 
-    private static final List<HudElement> ELEMENTS = List.of(new Watermark(), new ModuleList(), new Coordinates(), new TargetCard());
+    private static final List<HudElement> ELEMENTS = List.of(new Watermark(), new ModuleList(), new Coordinates(), new TargetCard(), new Notifications());
     private static final TargetMarker MARKER = new TargetMarker();
     private static final Spring edit = new Spring(0f, Motion.FADE);
     private static final Spring vGuideA = new Spring(0f, Motion.HOVER);
@@ -34,6 +34,33 @@ public final class HudLayer {
     private static boolean hSnapped;
 
     private HudLayer() {
+    }
+
+    public static float[] mouse() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.mouse.isCursorLocked() || mc.currentScreen == null) {
+            return null;
+        }
+        float fx = (float) (mc.mouse.getX() * mc.getWindow().getFramebufferWidth() / Math.max(1, mc.getWindow().getWidth()));
+        float fy = (float) (mc.mouse.getY() * mc.getWindow().getFramebufferHeight() / Math.max(1, mc.getWindow().getHeight()));
+        if (dev.fashion.ui.FashionScreen.testMouseX >= 0f) {
+            fx = dev.fashion.ui.FashionScreen.testMouseX;
+            fy = dev.fashion.ui.FashionScreen.testMouseY;
+        }
+        return new float[]{fx / scale, fy / scale};
+    }
+
+    public static boolean click() {
+        float[] m = mouse();
+        if (m == null) {
+            return false;
+        }
+        for (HudElement e : ELEMENTS) {
+            if (e instanceof Notifications n && n.click(m[0], m[1])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static float scale() {
@@ -74,6 +101,9 @@ public final class HudLayer {
             backdrop(c, ea);
         }
         for (HudElement e : ELEMENTS) {
+            if (e instanceof Notifications) {
+                continue;
+            }
             e.update(dt, sw, sh, editing);
             e.paint(c, dt, editing || ea > 0.5f);
         }
@@ -90,6 +120,20 @@ public final class HudLayer {
         if (hGuideA.get() > 0.01f) {
             c.shape(0f, hGuide.get() - 0.5f, sw, 1f).horizontal(Colors.withAlpha(Theme.ACCENT_HI, 0.7f * hGuideA.get()), Colors.withAlpha(Theme.ACCENT_HI, 0.1f * hGuideA.get()))
                     .glow(4f, Colors.withAlpha(Theme.GLOW, 0.6f * hGuideA.get())).draw();
+        }
+        c.pop();
+    }
+
+    public static void paintTop(Canvas c, float dt) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        boolean editing = mc.currentScreen instanceof HudEditorScreen;
+        c.push();
+        c.scale(scale, scale);
+        for (HudElement e : ELEMENTS) {
+            if (e instanceof Notifications) {
+                e.update(dt, sw, sh, editing);
+                e.paint(c, dt, editing || edit.get() > 0.5f);
+            }
         }
         c.pop();
     }
@@ -233,7 +277,7 @@ public final class HudLayer {
     }
 
     public static void resetPositions() {
-        float[][] defaults = {{0.008f, 0.012f}, {0.992f, 0.012f}, {0.008f, 0.985f}, {0.5f, 0.74f}};
+        float[][] defaults = {{0.008f, 0.012f}, {0.992f, 0.012f}, {0.008f, 0.985f}, {0.5f, 0.83f}, {0.992f, 0.975f}};
         for (int i = 0; i < ELEMENTS.size(); i++) {
             ELEMENTS.get(i).fx = defaults[i][0];
             ELEMENTS.get(i).fy = defaults[i][1];

@@ -241,6 +241,7 @@ public final class Canvas {
         float shadowAlpha;
         float sheen;
         float chrome;
+        float clouds;
         float mode;
         GpuTextureView image;
         GpuSampler sampler;
@@ -263,6 +264,7 @@ public final class Canvas {
             shadowX = shadowY = shadowBlur = shadowAlpha = 0f;
             sheen = 0f;
             chrome = 0f;
+            clouds = 0f;
             mode = UiVertex.MODE_SHAPE;
             image = null;
             sampler = null;
@@ -345,6 +347,17 @@ public final class Canvas {
             return this;
         }
 
+        public Shape clouds(float amount) {
+            clouds = amount;
+            return this;
+        }
+
+        public Shape backdrop() {
+            mode = UiVertex.MODE_BACKDROP;
+            usedGlass = true;
+            return this;
+        }
+
         public Shape storm(int cloud) {
             mode = UiVertex.MODE_STORM;
             lineColor = cloud;
@@ -416,13 +429,13 @@ public final class Canvas {
         float dv = (s.v1 - s.v0) / s.h;
         ensureCapacity();
         vertex(ax, ay, lx0, ly0, hw, hh, clip, s.mode, r0, r1, r2, r3, Colors.mulAlpha(s.c0, alpha), line, glow, s, sa,
-                s.u0 + (lx0 + hw) * du, s.v0 + (ly0 + hh) * dv, 0f, 0f);
+                s.u0 + (lx0 + hw) * du, s.v0 + (ly0 + hh) * dv, s.clouds, 0f);
         vertex(dx, dy, lx0, ly1, hw, hh, clip, s.mode, r0, r1, r2, r3, Colors.mulAlpha(s.c3, alpha), line, glow, s, sa,
-                s.u0 + (lx0 + hw) * du, s.v0 + (ly1 + hh) * dv, 0f, 0f);
+                s.u0 + (lx0 + hw) * du, s.v0 + (ly1 + hh) * dv, s.clouds, 0f);
         vertex(ccx, ccy, lx1, ly1, hw, hh, clip, s.mode, r0, r1, r2, r3, Colors.mulAlpha(s.c2, alpha), line, glow, s, sa,
-                s.u0 + (lx1 + hw) * du, s.v0 + (ly1 + hh) * dv, 0f, 0f);
+                s.u0 + (lx1 + hw) * du, s.v0 + (ly1 + hh) * dv, s.clouds, 0f);
         vertex(bx, by, lx1, ly0, hw, hh, clip, s.mode, r0, r1, r2, r3, Colors.mulAlpha(s.c1, alpha), line, glow, s, sa,
-                s.u0 + (lx1 + hw) * du, s.v0 + (ly0 + hh) * dv, 0f, 0f);
+                s.u0 + (lx1 + hw) * du, s.v0 + (ly0 + hh) * dv, s.clouds, 0f);
         quads++;
         batches.get(batches.size() - 1).count++;
     }
@@ -701,6 +714,8 @@ public final class Canvas {
             pass.setUniform("UiFrame", frameUniform);
             pass.bindTexture("Atlas", font.view(), font.sampler());
             pass.bindTexture("Backdrop", backdrop != null ? backdrop : font.view(), linear);
+            GpuTextureView lightView = Blur.light();
+            pass.bindTexture("BackdropLight", lightView != null ? lightView : font.view(), linear);
             pass.setVertexBuffer(0, vertexBuffer);
             pass.setIndexBuffer(indices, indexType);
             for (Batch batch : batches) {

@@ -8,6 +8,7 @@ layout(std140) uniform UiFrame {
 
 uniform sampler2D Atlas;
 uniform sampler2D Backdrop;
+uniform sampler2D BackdropLight;
 uniform sampler2D Image;
 
 in vec2 vLocal;
@@ -123,6 +124,22 @@ vec3 chromeText(float t) {
     return mix(horizon, low, smoothstep(0.56, 1.0, t));
 }
 
+float glint(vec2 frag) {
+    float phase = fract(Params.x / 6.5);
+    float s = (frag.x + frag.y * 0.55) / (Screen.x + Screen.y * 0.55);
+    float c = phase * 1.9 - 0.45;
+    float d = (s - c) / 0.045;
+    return exp(-d * d);
+}
+
+float clouds(vec2 frag) {
+    vec2 q = frag / (Screen.y * 0.22);
+    float t = Params.x;
+    vec2 drift = vec2(t * 0.011, -t * 0.004);
+    float w = fbm(q + drift + vec2(fbm(q * 0.7 - drift * 1.3), fbm(q * 0.8 + drift)) * 1.1);
+    return smoothstep(0.38, 0.92, w);
+}
+
 vec4 over(vec4 top, vec4 bottom) {
     return top + bottom * (1.0 - top.a);
 }
@@ -140,8 +157,18 @@ vec4 shapeBody(float mode, vec4 fill, vec2 p, vec2 hsz) {
         float tint = clamp(fill.a / presence, 0.0, 1.0);
         vec3 c = mix(back, fill.rgb, tint);
         c = mix(fill.rgb, c, ready);
-        float grain = (ign(gl_FragCoord.xy * 1.37 + 3.1) - 0.5) * 0.018;
+        if (vUv.z > 0.0) {
+            vec2 frag = vec2(gl_FragCoord.x, Screen.y - gl_FragCoord.y);
+            float cl = clouds(frag);
+            c += vec3(0.075, 0.062, 0.13) * cl * vUv.z;
+        }
+        float grain = (ign(gl_FragCoord.xy * 1.37 + 3.1) - 0.5) * 0.012;
         return vec4(c + grain, vUv.w * mix(max(tint, 0.94), 1.0, ready));
+    }
+    if (mode > 4.5) {
+        vec3 back = texture(BackdropLight, gl_FragCoord.xy * Screen.zw).rgb;
+        vec3 c = mix(back, fill.rgb, fill.a / max(vUv.w, 1e-3));
+        return vec4(c, vUv.w * Params.y);
     }
     if (mode < 3.5) {
         vec4 t = texture(Image, vUv.xy);
@@ -191,6 +218,7 @@ void main() {
         vec3 rgb = fill.rgb;
         if (vP2.w > 0.0) {
             rgb = mix(rgb, rgb * chromeText(clamp(vLocal.y, 0.0, 1.0)), vP2.w);
+            rgb += vec3(1.0, 0.97, 1.0) * glint(frag) * 0.85 * vP2.w;
         }
         float a = fc * fill.a;
         col = over(vec4(rgb * a, a), col);
@@ -236,6 +264,7 @@ void main() {
                     vec2 n = normalRound(p, hsz, vRadii);
                     float ndl = dot(n, normalize(vec2(-0.42, -1.0)));
                     lc = mix(lc, lc * chrome(ndl), vP2.w);
+                    lc += vec3(1.0, 0.97, 1.0) * glint(frag) * 1.1 * vP2.w * (0.55 + 0.45 * max(ndl, 0.0));
                 }
                 body.rgb = mix(body.rgb, lc, bc);
                 body.a = max(body.a, bc);

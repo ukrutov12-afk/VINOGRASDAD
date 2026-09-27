@@ -38,6 +38,9 @@ public final class TargetCard extends HudElement {
 
     private LivingEntity source(boolean editing) {
         LivingEntity t = Modules.attackAura.target();
+        if (!dev.fashion.core.Targets.accepts(Modules.hud.targetKinds, t)) {
+            t = null;
+        }
         if (t == null && editing) {
             return MinecraftClient.getInstance().player;
         }

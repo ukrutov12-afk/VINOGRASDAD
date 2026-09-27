@@ -2,19 +2,16 @@ package dev.fashion.modules.combat;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.PlayerLikeEntity;
-import net.minecraft.entity.mob.Monster;
-import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.List;
-
 import dev.fashion.core.Category;
 import dev.fashion.core.Module;
+import dev.fashion.core.Targets;
+import dev.fashion.core.setting.BoolSetting;
 import dev.fashion.core.setting.ModeSetting;
 import dev.fashion.core.setting.MultiSetting;
 import dev.fashion.core.setting.NumberSetting;
@@ -25,8 +22,8 @@ public final class AttackAura extends Module {
             .visibleWhen(() -> aim.is(1));
     private final NumberSetting attackRange = number("Дистанция атаки", "Дальше удар не наносится", 3.0, 2.0, 6.0, 0.1, " б");
     private final NumberSetting aimRange = number("Дистанция наведения", "С какой дистанции цель берётся на прицел", 4.5, 2.0, 8.0, 0.1, " б");
-    private final MultiSetting targets = multi("Цели", "Кого считать целью",
-            List.of("Игроки", "Монстры", "Животные", "Невидимые"), true, true, false, false);
+    private final MultiSetting targets = add(Targets.setting("Кого атаковать: игроков, мобов или всех вместе"));
+    private final BoolSetting invisible = bool("Невидимые", "Атаковать невидимых", false);
     private final ModeSetting sprintReset = mode("Сброс спринта", "Что делать со спринтом перед ударом", 1, "Нет", "Легитный", "Быстрый");
 
     private LivingEntity target;
@@ -120,19 +117,10 @@ public final class AttackAura extends Module {
     }
 
     private boolean accepts(LivingEntity e) {
-        if (e.isInvisible() && !targets.has(3)) {
+        if (e.isInvisible() && !invisible.on()) {
             return false;
         }
-        if (e instanceof PlayerLikeEntity) {
-            return targets.has(0);
-        }
-        if (e instanceof Monster) {
-            return targets.has(1);
-        }
-        if (e instanceof AnimalEntity) {
-            return targets.has(2);
-        }
-        return false;
+        return Targets.accepts(targets, e);
     }
 
     private static Vec3d aimPoint(LivingEntity e) {
